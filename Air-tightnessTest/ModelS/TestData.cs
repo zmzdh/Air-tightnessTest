@@ -44,6 +44,8 @@ namespace LumbarMassageTest.Models
         public byte PressureModuleStationId { get; set; } = 1;
         public int PressureInputStartAddress { get; set; } = 40097;
         public int PressureOutputStartAddress { get; set; } = 40023;
+        public double PressureInputFullScaleKPa { get; set; } = 100;
+        public double PressureOutputFullScaleKPa { get; set; } = 100;
     }
 
     public class ChannelDailyProduction
@@ -1320,11 +1322,13 @@ namespace LumbarMassageTest.Models
         public int HighDetectDurationMs { get; set; } = 5000;
         public int HighExhaustDurationMs { get; set; } = 3000;
         public double HighMaxDropKPa { get; set; } = 1.0;
+        public double HighOutputPressureKPa { get; set; } = 100;
         public int LowInflateDurationMs { get; set; } = 3000;
         public int LowStabilizeDurationMs { get; set; } = 2000;
         public int LowDetectDurationMs { get; set; } = 5000;
         public int LowExhaustDurationMs { get; set; } = 3000;
         public double LowMaxDropPa { get; set; } = 100.0;
+        public double LowOutputPressureKPa { get; set; } = 20;
         public int PressureSampleIntervalMs { get; set; } = 200;
     }
 
@@ -1334,11 +1338,11 @@ namespace LumbarMassageTest.Models
         public int InputRegisterAddress { get; set; } = 40097;
         public int OutputRegisterAddress { get; set; } = 40023;
         public int ZeroRaw { get; set; } = 0;
-        public int FullScaleRaw { get; set; } = 10000;
+        public int FullScaleRaw { get; set; } = 20000;
         public double PressureZeroKPa { get; set; } = 0;
-        public double PressureFullScaleKPa { get; set; } = 100;
+        public double PressureFullScaleKPa { get; set; } = 0;
         public double Output4mAPressureKPa { get; set; } = 0;
-        public double Output20mAPressureKPa { get; set; } = 100;
+        public double Output20mAPressureKPa { get; set; } = 0;
     }
     public class CurrentSleepConfig
     {
@@ -1686,7 +1690,3 @@ namespace LumbarMassageTest.Models
         public int LoginCount { get; set; }
     }
 }
-
-
-
-

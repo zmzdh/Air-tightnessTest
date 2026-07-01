@@ -210,6 +210,8 @@ namespace LumbarMassageTest.Services
                 PressureModuleStationId = 1,
                 PressureInputStartAddress = 40097,
                 PressureOutputStartAddress = 40023,
+                PressureInputFullScaleKPa = 100,
+                PressureOutputFullScaleKPa = 100,
             };
 
             EnsureAppConfigDefaults(defaultConfig);
@@ -567,11 +569,13 @@ namespace LumbarMassageTest.Services
                 HighDetectDurationMs = source.HighDetectDurationMs,
                 HighExhaustDurationMs = source.HighExhaustDurationMs,
                 HighMaxDropKPa = source.HighMaxDropKPa,
+                HighOutputPressureKPa = source.HighOutputPressureKPa > 0 ? source.HighOutputPressureKPa : 100,
                 LowInflateDurationMs = source.LowInflateDurationMs,
                 LowStabilizeDurationMs = source.LowStabilizeDurationMs,
                 LowDetectDurationMs = source.LowDetectDurationMs,
                 LowExhaustDurationMs = source.LowExhaustDurationMs,
                 LowMaxDropPa = source.LowMaxDropPa,
+                LowOutputPressureKPa = source.LowOutputPressureKPa > 0 ? source.LowOutputPressureKPa : 20,
                 PressureSampleIntervalMs = source.PressureSampleIntervalMs
             };
         }
@@ -585,7 +589,7 @@ namespace LumbarMassageTest.Services
                 InputRegisterAddress = source.InputRegisterAddress,
                 OutputRegisterAddress = source.OutputRegisterAddress,
                 ZeroRaw = source.ZeroRaw,
-                FullScaleRaw = source.FullScaleRaw,
+                FullScaleRaw = source.FullScaleRaw > source.ZeroRaw ? source.FullScaleRaw : 20000,
                 PressureZeroKPa = source.PressureZeroKPa,
                 PressureFullScaleKPa = source.PressureFullScaleKPa,
                 Output4mAPressureKPa = source.Output4mAPressureKPa,
@@ -717,6 +721,16 @@ namespace LumbarMassageTest.Services
                 config.PressureOutputStartAddress = 40023;
             }
 
+            if (config.PressureInputFullScaleKPa < 50 || config.PressureInputFullScaleKPa > 200)
+            {
+                config.PressureInputFullScaleKPa = 100;
+            }
+
+            if (config.PressureOutputFullScaleKPa < 100 || config.PressureOutputFullScaleKPa > 200)
+            {
+                config.PressureOutputFullScaleKPa = 100;
+            }
+
             config.SerialDevice1 ??= SerialPortConfig.CreateDefaultDevice1();
             config.SerialDevice2 ??= SerialPortConfig.CreateDefaultDevice2();
 
@@ -821,4 +835,3 @@ namespace LumbarMassageTest.Services
 
     }
 }
-

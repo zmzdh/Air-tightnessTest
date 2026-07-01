@@ -124,6 +124,8 @@ namespace LumbarMassageTest.UserControls
                     ApplyMesModeSelection(_currentConfig.MesIntegrationMode);
                     ApplySerialConfig(_currentConfig);
                     CmbChannelCount.SelectedItem = SupportedChannelCounts.Contains(_currentConfig.ChannelCount) ? _currentConfig.ChannelCount : 4;
+                    TxtPressureInputFullScale.Text = NormalizePressureRange(_currentConfig.PressureInputFullScaleKPa, 50, 200, 100).ToString("F0");
+                    TxtPressureOutputFullScale.Text = NormalizePressureRange(_currentConfig.PressureOutputFullScaleKPa, 100, 200, 100).ToString("F0");
                 }
                 else
                 {
@@ -135,6 +137,8 @@ namespace LumbarMassageTest.UserControls
                     TxtPlcCoilCount.Text = "128";
                     ApplySerialConfig(new AppConfig());
                     CmbChannelCount.SelectedItem = 4;
+                    TxtPressureInputFullScale.Text = "100";
+                    TxtPressureOutputFullScale.Text = "100";
                 }
             }
             catch (Exception ex)
@@ -148,6 +152,8 @@ namespace LumbarMassageTest.UserControls
                 TxtPlcCoilCount.Text = "128";
                 ApplySerialConfig(new AppConfig());
                 CmbChannelCount.SelectedItem = 4;
+                    TxtPressureInputFullScale.Text = "100";
+                    TxtPressureOutputFullScale.Text = "100";
             }
             finally
             {
@@ -403,12 +409,31 @@ namespace LumbarMassageTest.UserControls
             string serial2DataBitsText = TxtSerial2DataBits.Text.Trim();
             string serial2Parity = CmbSerial2Parity.SelectedItem as string ?? string.Empty;
             string serial2StopBits = CmbSerial2StopBits.SelectedItem as string ?? string.Empty;
+            string pressureInputFullScaleText = TxtPressureInputFullScale.Text.Trim();
+            string pressureOutputFullScaleText = TxtPressureOutputFullScale.Text.Trim();
             var source = _currentConfig ?? new AppConfig();
             int channelCount = CmbChannelCount.SelectedItem is int cc && SupportedChannelCounts.Contains(cc) ? cc : source.ChannelCount;
             if (channelCount != 2 && channelCount != 3 && channelCount != 4)
             {
                 channelCount = 4;
             }
+
+            if (!TryParsePressureRange(pressureInputFullScaleText, source.PressureInputFullScaleKPa, 50, 200, 100, out double pressureInputFullScale))
+            {
+                errorMessage = "输入压力量程必须是 50-200 KPa 之间的数字";
+                config = null!;
+                return false;
+            }
+
+            if (!TryParsePressureRange(pressureOutputFullScaleText, source.PressureOutputFullScaleKPa, 100, 200, 100, out double pressureOutputFullScale))
+            {
+                errorMessage = "模拟输出量程必须是 100-200 KPa 之间的数字";
+                config = null!;
+                return false;
+            }
+
+            TxtPressureInputFullScale.Text = pressureInputFullScale.ToString("F0");
+            TxtPressureOutputFullScale.Text = pressureOutputFullScale.ToString("F0");
 
             string plcIp = string.IsNullOrWhiteSpace(plcIpInput) ? source.PLCIPAddress : plcIpInput;
 
@@ -573,6 +598,11 @@ namespace LumbarMassageTest.UserControls
                 ModbusServerIp = modbusIpValue,
                 ModbusServerPort = modbusPortValue,
                 ChannelCount = channelCount,
+                PressureModuleStationId = source.PressureModuleStationId,
+                PressureInputStartAddress = source.PressureInputStartAddress,
+                PressureOutputStartAddress = source.PressureOutputStartAddress,
+                PressureInputFullScaleKPa = pressureInputFullScale,
+                PressureOutputFullScaleKPa = pressureOutputFullScale,
                 SerialDevice1 = device1,
                 SerialDevice2 = device2
             };
@@ -610,6 +640,27 @@ namespace LumbarMassageTest.UserControls
             };
 
             return config;
+        }
+
+        private static bool TryParsePressureRange(string input, double sourceValue, double min, double max, double fallback, out double value)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                value = NormalizePressureRange(sourceValue, min, max, fallback);
+                return true;
+            }
+
+            if (!double.TryParse(input, out value))
+            {
+                return false;
+            }
+
+            return value >= min && value <= max;
+        }
+
+        private static double NormalizePressureRange(double value, double min, double max, double fallback)
+        {
+            return double.IsNaN(value) || double.IsInfinity(value) || value < min || value > max ? fallback : value;
         }
 
         private static int TryParsePositiveInt(string input, int fallback)

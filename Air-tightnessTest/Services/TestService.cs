@@ -314,9 +314,11 @@ namespace LumbarMassageTest.Services
             string name = highPressure ? "高压" : "低压";
             var stage = highPressure ? TestStage.HighPressureInflate : TestStage.LowPressureInflate;
 
+            double outputPressure = highPressure ? settings.HighOutputPressureKPa : settings.LowOutputPressureKPa;
+            await _pressureService.WriteOutputPressureAsync(context.Channel, outputPressure, context.ChannelConfig.PressureConfig, token).ConfigureAwait(false);
             await WriteValveAsync(GetExhaustValveAddress(context, highPressure), false).ConfigureAwait(false);
             await WriteValveAsync(GetInletValveAddress(context, highPressure), true).ConfigureAwait(false);
-            RaiseStageChanged(context, stage, StepExecutionState.Running, $"{name}进气中 {duration}ms");
+            RaiseStageChanged(context, stage, StepExecutionState.Running, $"{name}进气中 {duration}ms，输出设定 {outputPressure:F1}KPa");
             await Task.Delay(Math.Max(0, duration), token).ConfigureAwait(false);
             await WriteValveAsync(GetInletValveAddress(context, highPressure), false).ConfigureAwait(false);
             return StageExecutionResult.Pass($"{name}进气完成");
