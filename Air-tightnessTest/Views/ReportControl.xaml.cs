@@ -1,4 +1,4 @@
-﻿// UserControls/ReportControl.xaml.cs
+// UserControls/ReportControl.xaml.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -256,17 +256,12 @@ namespace LumbarMassageTest.UserControls
             var allRecords = await _dbService.GetAllTestRecordsAsync(startDate, endDate, model, operatorName, result, workOrder, productCode);
 
             var csv = new StringBuilder();
-            csv.AppendLine("序号,测试时间,工单号,产品型号,产品代码,通道,测试结果,静态电流(mA),按摩平均电流(mA),按摩最大电流(mA),腰托平均电流(mA),腰托最大电流(mA),测试电压(V),失败原因,操作员,测试时长(s)");
+            csv.AppendLine("序号,测试时间,工单号,产品型号,产品代码,通道,测试结果,失败原因,操作员,测试时长(s)");
 
             foreach (var record in allRecords)
             {
-                var staticCurrent = record.StaticCurrent.HasValue ? record.StaticCurrent.Value.ToString("F1") : string.Empty;
-                var massageAvg = record.MassageAverageCurrent.HasValue ? record.MassageAverageCurrent.Value.ToString("F1") : string.Empty;
-                var massageMax = record.MassageMaxCurrent.HasValue ? record.MassageMaxCurrent.Value.ToString("F1") : string.Empty;
-                var lumbarAvg = record.LumbarAverageCurrent.HasValue ? record.LumbarAverageCurrent.Value.ToString("F1") : string.Empty;
-                var lumbarMax = record.LumbarMaxCurrent.HasValue ? record.LumbarMaxCurrent.Value.ToString("F1") : string.Empty;
 
-                csv.AppendLine($"{record.Id},{record.TestTime:yyyy-MM-dd HH:mm:ss},{record.WorkOrder},{record.ProductModel},{record.ProductCode},{record.Channel},{record.Result},{staticCurrent},{massageAvg},{massageMax},{lumbarAvg},{lumbarMax},{record.TestVoltage:F1},\"{record.FailReason}\",{record.Operator},{record.TestDuration:F1}");
+                csv.AppendLine($"{record.Id},{record.TestTime:yyyy-MM-dd HH:mm:ss},{record.WorkOrder},{record.ProductModel},{record.ProductCode},{record.Channel},{record.Result},\"{record.FailReason}\",{record.Operator},{record.TestDuration:F1}");
             }
 
             await File.WriteAllTextAsync(filePath, csv.ToString(), Encoding.UTF8);

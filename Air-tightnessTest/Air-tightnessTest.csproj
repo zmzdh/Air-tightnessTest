@@ -1,60 +1,69 @@
-﻿<!-- LumbarMassageTestSystem.csproj -->
+<!-- Air-tightnessTest.csproj -->
 <Project Sdk="Microsoft.NET.Sdk">
 
-        <PropertyGroup>
-                <OutputType>WinExe</OutputType>
-                <TargetFramework>net8.0-windows</TargetFramework>
-                <Nullable>enable</Nullable>
-                <UseWPF>true</UseWPF>
-                <RootNamespace>LumbarMassageTest</RootNamespace>
-                <AssemblyName>LumbarMassageTest</AssemblyName>
-                <StartupObject>LumbarMassageTest.EntryPoint</StartupObject>
-                <AssemblyTitle>腰托按摩控制板检测系统</AssemblyTitle>
-		<AssemblyDescription>用于腰托按摩控制板的自动化检测系统</AssemblyDescription>
-		<AssemblyCompany>CSAS</AssemblyCompany>
-		<AssemblyCopyright>Copyright © 2026</AssemblyCopyright>
-		<AssemblyVersion>2.1.1.0</AssemblyVersion>
-		<PlatformTarget>x64</PlatformTarget>
-		<Platforms>AnyCPU;x64</Platforms>
-		<ApplicationIcon>CSAS_icon.ico</ApplicationIcon>
-	</PropertyGroup>
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>LumbarMassageTest</RootNamespace>
+    <AssemblyName>Air-tightnessTest</AssemblyName>
+    <StartupObject>LumbarMassageTest.EntryPoint</StartupObject>
+    <AssemblyTitle>&#x6C14;&#x5BC6;&#x6027;&#x6D4B;&#x8BD5;&#x7CFB;&#x7EDF;</AssemblyTitle>
+    <AssemblyDescription>&#x7528;&#x4E8E;&#x6C14;&#x5BC6;&#x6027;&#x6D4B;&#x8BD5;&#x7684;&#x81EA;&#x52A8;&#x5316;&#x68C0;&#x6D4B;&#x7CFB;&#x7EDF;</AssemblyDescription>
+    <AssemblyCompany>CSAS</AssemblyCompany>
+    <AssemblyCopyright>Copyright &#x00A9; 2026</AssemblyCopyright>
+    <AssemblyVersion>2.1.1.0</AssemblyVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>AnyCPU;x64</Platforms>
+    <ApplicationIcon>CSAS_icon.ico</ApplicationIcon>
+  </PropertyGroup>
 
-	<ItemGroup>
-	  <Compile Remove="Config\**" />
-	  <Compile Remove="Images\**" />
-	  <Compile Remove="Logs\**" />
-	  <EmbeddedResource Remove="Config\**" />
-	  <EmbeddedResource Remove="Images\**" />
-	  <EmbeddedResource Remove="Logs\**" />
-	  <None Remove="Config\**" />
-	  <None Remove="Images\**" />
-	  <None Remove="Logs\**" />
-	  <Page Remove="Config\**" />
-	  <Page Remove="Images\**" />
-	  <Page Remove="Logs\**" />
-	</ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Config\**" />
+    <Compile Remove="Images\**" />
+    <Compile Remove="Logs\**" />
+    <EmbeddedResource Remove="Config\**" />
+    <EmbeddedResource Remove="Images\**" />
+    <EmbeddedResource Remove="Logs\**" />
+    <None Remove="Config\**" />
+    <None Remove="Images\**" />
+    <None Remove="Logs\**" />
+    <Page Remove="Config\**" />
+    <Page Remove="Images\**" />
+    <Page Remove="Logs\**" />
+  </ItemGroup>
 
-	<ItemGroup>
-	  <Resource Include="舒井logo.jpg" />
-	</ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Services\CommService.cs" />
+    <Compile Remove="Services\SensorModbusService.cs" />
+    <Compile Remove="Services\SerialPortService.cs" />
+    <Compile Remove="Views\ManualControl.xaml.cs" />
+    <Compile Remove="Views\AutoTest\MassageTestView.xaml.cs" />
+    <Page Remove="Views\ManualControl.xaml" />
+    <Page Remove="Views\AutoTest\MassageTestView.xaml" />
+  </ItemGroup>
 
-        <ItemGroup>
-                <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
-                <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.9" />
-                <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-                <PackageReference Include="System.Text.Json" Version="9.0.9" />
-                <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
-                <PackageReference Include="System.IO.Ports" Version="9.0.0" />
-        </ItemGroup>
+  <ItemGroup>
+    <Resource Include="&#x8212;&#x4E95;logo.jpg" />
+  </ItemGroup>
 
-        <ItemGroup>
-                <Content Include="Docs/UsageHelp.txt">
-                        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-                </Content>
-                <Content Include="Licensing/Keys/public-key.pem">
-                        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-                </Content>
-        </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.9" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="System.Text.Json" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
+    <PackageReference Include="System.IO.Ports" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Docs/UsageHelp.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Licensing/Keys/public-key.pem">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
 </Project>
-

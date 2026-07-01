@@ -1,4 +1,4 @@
-ï»¿// MainWindow.xaml.cs
+// MainWindow.xaml.cs
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -23,9 +23,6 @@ namespace LumbarMassageTest
         private readonly DatabaseService _dbService;
         private readonly ConfigService _configService;
         private readonly TestService _testService;
-        private readonly CommService _commService;
-        private readonly SerialPortService _serialDevice1Service;
-        private readonly SensorModbusService _sensorService;
         private readonly MesService _mesService;
         private readonly ModbusServerService _modbusService;
         private readonly ILogService _logService;
@@ -36,9 +33,8 @@ namespace LumbarMassageTest
         private DispatcherTimer _timer;
         private AppConfig? _latestAppConfig;
 
-        // ç”¨æˆ·æ§ä»¶
+        // ÓÃ»§¿Ø¼ş
         private TestControl _testControl;
-        private ManualControl _manualControl;
         private ModelConfigControl _modelControl;
         private ReportControl _reportControl;
         private UserManagementControl _userControl;
@@ -65,22 +61,17 @@ namespace LumbarMassageTest
         private readonly Dictionary<string, bool> _cachedPlcBits = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _pendingPlcBitUpdates = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<int, CancellationTokenSource> _ngPulseTokens = new();
-        private readonly Dictionary<int, bool[]> _massagePointOverrides = new();
-        private readonly object _massagePointOverrideLock = new();
 
         public MainWindow()
         {
             InitializeComponent();
 
-            // åˆå§‹åŒ–æœåŠ¡ - ä½¿ç”¨å•ä¾‹æ¨¡å¼è·å–PLCServiceå®ä¾‹
+            // ³õÊ¼»¯·şÎñ - Ê¹ÓÃµ¥ÀıÄ£Ê½»ñÈ¡PLCServiceÊµÀı
             _logService = LogService.Instance;
             _plcService = PLCService.Instance;
             _dbService = new DatabaseService(_logService);
             _configService = new ConfigService(_logService);
-            _serialDevice1Service = new SerialPortService(SerialPortConfig.CreateDefaultDevice1(), _logService);
-            _commService = new CommService(_serialDevice1Service, _logService);
-            _sensorService = new SensorModbusService(SerialPortConfig.CreateDefaultDevice2(), _logService);
-            _testService = new TestService(_plcService, _commService, _sensorService, _logService);
+            _testService = new TestService(_plcService, _logService);
             _mesService = new MesService(_logService);
             _modbusService = new ModbusServerService(_logService);
             _licenseService = new LicenseService(_logService);
@@ -90,15 +81,13 @@ namespace LumbarMassageTest
             _testService.OnTestStageChanged += TestService_OnStageChanged;
             _testService.OnTestCompleted += TestService_OnTestCompleted;
             _testService.OnTestCompleted += TestService_OnTestCompletedSaveRecord;
-            _testService.OnMassagePointSampled += TestService_OnMassagePointSampled;
-            _sensorService.MeasurementsUpdated += SensorService_MeasurementsUpdated;
 
             foreach (var channel in new[] { 1, 2, 3, 4 })
             {
                 _fullTestHoldStartTimes[channel] = null;
             }
 
-            // è®¢é˜…äº‹ä»¶
+            // ¶©ÔÄÊÂ¼ş
             _plcService.OnConnectionChanged += PlcService_OnConnectionChanged;
             _plcService.OnError += PlcService_OnError;
 
@@ -106,7 +95,7 @@ namespace LumbarMassageTest
             ShowLoginDialog();
 
             _ = InitializeIntegrationModeAsync();
-            _ = InitializeSerialServicesAsync();
+            _testService.ConfigurePressureModule(_latestAppConfig ?? new AppConfig());
         }
 
         private void InitializeTimer()
@@ -122,21 +111,21 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"å®šæ—¶å™¨åˆå§‹åŒ–å¤±è´¥: {ex.Message}", "é”™è¯¯",
+                MessageBox.Show($"¶¨Ê±Æ÷³õÊ¼»¯Ê§°Ü: {ex.Message}", "´íÎó",
                                 MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         private void Timer_Tick(object sender, EventArgs e)
         {
-            // æ›´æ–°æ—¶é—´æ˜¾ç¤º
+            // ¸üĞÂÊ±¼äÏÔÊ¾
             try
             {
                 TxtTime.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             }
             catch (Exception)
             {
-                // å¿½ç•¥UIæ›´æ–°é”™è¯¯
+                // ºöÂÔUI¸üĞÂ´íÎó
             }
         }
 
@@ -146,7 +135,7 @@ namespace LumbarMassageTest
             {
                 Dispatcher.Invoke(() =>
                 {
-                    TxtStatus.Text = "æ•°æ®åº“æœåŠ¡æœªåˆå§‹åŒ–ï¼Œæ— æ³•ä¿å­˜æµ‹è¯•è®°å½•";
+                    TxtStatus.Text = "Êı¾İ¿â·şÎñÎ´³õÊ¼»¯£¬ÎŞ·¨±£´æ²âÊÔ¼ÇÂ¼";
                 });
                 return;
             }
@@ -161,7 +150,7 @@ namespace LumbarMassageTest
             catch (Exception ex)
             {
                 modbusUpdated = false;
-                _logService.LogWarning("æ›´æ–° Modbus æµ‹è¯•æ•°æ®å¤±è´¥", ex);
+                _logService.LogWarning("¸üĞÂ Modbus ²âÊÔÊı¾İÊ§°Ü", ex);
             }
 
             try
@@ -171,7 +160,7 @@ namespace LumbarMassageTest
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        TxtStatus.Text = "ä¿å­˜æµ‹è¯•è®°å½•å¤±è´¥ï¼Œè¯·æ£€æŸ¥æ•°æ®åº“";
+                        TxtStatus.Text = "±£´æ²âÊÔ¼ÇÂ¼Ê§°Ü£¬Çë¼ì²éÊı¾İ¿â";
                     });
                 }
                 else
@@ -182,14 +171,14 @@ namespace LumbarMassageTest
                         if (isModbusMode)
                         {
                             TxtStatus.Text = modbusUpdated
-                                ? "æµ‹è¯•è®°å½•å·²ä¿å­˜å¹¶æ›´æ–° Modbus æ•°æ®"
-                                : "æµ‹è¯•è®°å½•å·²ä¿å­˜ï¼Œä½†æ›´æ–° Modbus æ•°æ®å¤±è´¥";
+                                ? "²âÊÔ¼ÇÂ¼ÒÑ±£´æ²¢¸üĞÂ Modbus Êı¾İ"
+                                : "²âÊÔ¼ÇÂ¼ÒÑ±£´æ£¬µ«¸üĞÂ Modbus Êı¾İÊ§°Ü";
                         }
                         else
                         {
                             TxtStatus.Text = sent
-                                ? "æµ‹è¯•è®°å½•å·²ä¿å­˜å¹¶æ¨é€MESæˆåŠŸ"
-                                : "æµ‹è¯•è®°å½•å·²ä¿å­˜ï¼Œä½†æ¨é€MESå¤±è´¥";
+                                ? "²âÊÔ¼ÇÂ¼ÒÑ±£´æ²¢ÍÆËÍMES³É¹¦"
+                                : "²âÊÔ¼ÇÂ¼ÒÑ±£´æ£¬µ«ÍÆËÍMESÊ§°Ü";
                         }
                     });
                 }
@@ -198,17 +187,13 @@ namespace LumbarMassageTest
             {
                 Dispatcher.Invoke(() =>
                 {
-                    TxtStatus.Text = $"ä¿å­˜æµ‹è¯•è®°å½•å¼‚å¸¸: {ex.Message}";
+                    TxtStatus.Text = $"±£´æ²âÊÔ¼ÇÂ¼Òì³£: {ex.Message}";
                 });
             }
         }
 
         private void TestService_OnStageChanged(object sender, TestStageChangedEventArgs e)
         {
-            if (e.Stage == TestStage.MassageTest && e.State != StepExecutionState.Running)
-            {
-                ClearMassagePointOverride(e.Channel);
-            }
 
             if (e.Stage != TestStage.Standby || e.State != StepExecutionState.Running)
             {
@@ -224,7 +209,6 @@ namespace LumbarMassageTest
 
         private void TestService_OnTestCompleted(object sender, TestRecord record)
         {
-            ClearMassagePointOverride(record.Channel);
             Dispatcher.InvokeAsync(async () =>
             {
                 await SetChannelRunningBitAsync(record.Channel, false);
@@ -245,18 +229,6 @@ namespace LumbarMassageTest
         }
 
 
-        private void TestService_OnMassagePointSampled(object sender, MassagePointSampleEventArgs e)
-        {
-            if (e == null)
-            {
-                return;
-            }
-
-            lock (_massagePointOverrideLock)
-            {
-                _massagePointOverrides[e.Channel] = (bool[])e.States.Clone();
-            }
-        }
 
 
         private async Task EnsureAppConfigLoadedAsync()
@@ -272,7 +244,7 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError("åŠ è½½åˆå§‹ç³»ç»Ÿé…ç½®å¤±è´¥", ex);
+                _logService.LogError("¼ÓÔØ³õÊ¼ÏµÍ³ÅäÖÃÊ§°Ü", ex);
             }
         }
 
@@ -280,7 +252,7 @@ namespace LumbarMassageTest
         {
             if (_dbService == null)
             {
-                MessageBox.Show("æ•°æ®åº“æœåŠ¡æœªåˆå§‹åŒ–ï¼Œæ— æ³•ç™»å½•ã€‚", "é”™è¯¯", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Êı¾İ¿â·şÎñÎ´³õÊ¼»¯£¬ÎŞ·¨µÇÂ¼¡£", "´íÎó", MessageBoxButton.OK, MessageBoxImage.Error);
                 Application.Current.Shutdown();
                 return;
             }
@@ -290,23 +262,23 @@ namespace LumbarMassageTest
             {
                 _currentUser = loginDialog.CurrentUser;
 
-                // è®¾ç½®DatabaseServiceçš„å½“å‰ç”¨æˆ·
+                // ÉèÖÃDatabaseServiceµÄµ±Ç°ÓÃ»§
                 DatabaseService.CurrentUser = _currentUser;
-                TxtCurrentUser.Text = $"å½“å‰ç”¨æˆ·: {_currentUser.Username} ({_currentUser.Role})";
+                TxtCurrentUser.Text = $"µ±Ç°ÓÃ»§: {_currentUser.Username} ({_currentUser.Role})";
 
-                // æ›´æ–°ç”¨æˆ·çš„ç™»å½•ä¿¡æ¯
+                // ¸üĞÂÓÃ»§µÄµÇÂ¼ĞÅÏ¢
                 await _dbService.UpdateLoginInfoAsync(_currentUser.Username);
 
-                // æ ¹æ®ç”¨æˆ·æƒé™è®¾ç½®ç•Œé¢
+                // ¸ù¾İÓÃ»§È¨ÏŞÉèÖÃ½çÃæ
                 SetUserPermissions();
 
-                // å…ˆåŠ è½½é…ç½®ï¼Œé¿å…ç•Œé¢å…ˆæŒ‰4é€šé“æ¸²æŸ“åå†åˆ‡å›2é€šé“å¯¼è‡´é—ªçƒ
+                // ÏÈ¼ÓÔØÅäÖÃ£¬±ÜÃâ½çÃæÏÈ°´4Í¨µÀäÖÈ¾ºóÔÙÇĞ»Ø2Í¨µÀµ¼ÖÂÉÁË¸
                 await EnsureAppConfigLoadedAsync();
 
-                // é»˜è®¤æ˜¾ç¤ºæµ‹è¯•ç•Œé¢
+                // Ä¬ÈÏÏÔÊ¾²âÊÔ½çÃæ
                 ShowTestControl();
 
-                // è¿æ¥PLC
+                // Á¬½ÓPLC
                 await ConnectPLC();
 
                 EnsurePlcReadingStarted();
@@ -342,7 +314,6 @@ namespace LumbarMassageTest
         private void SetUserPermissions()
         {
             ConfigureButtonAccess(BtnTest, HasPermission(Permission.Test));
-            ConfigureButtonAccess(BtnManual, HasPermission(Permission.Manual));
             ConfigureButtonAccess(BtnModel, HasPermission(Permission.Model));
             ConfigureButtonAccess(BtnReport, HasPermission(Permission.Report));
             ConfigureButtonAccess(BtnUser, HasPermission(Permission.UserManagement));
@@ -375,7 +346,7 @@ namespace LumbarMassageTest
 
         private void ShowAccessDeniedMessage()
         {
-            MessageBox.Show("å½“å‰ç”¨æˆ·æ— æƒé™è®¿é—®è¯¥åŠŸèƒ½ã€‚", "æƒé™ä¸è¶³", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("µ±Ç°ÓÃ»§ÎŞÈ¨ÏŞ·ÃÎÊ¸Ã¹¦ÄÜ¡£", "È¨ÏŞ²»×ã", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         private bool HasPermission(Permission permission)
@@ -405,18 +376,18 @@ namespace LumbarMassageTest
 
                 if (result)
                 {
-                    TxtStatus.Text = "PLCè¿æ¥æˆåŠŸ";
+                    TxtStatus.Text = "PLCÁ¬½Ó³É¹¦";
                 }
                 else
                 {
-                    TxtStatus.Text = "PLCè¿æ¥å¤±è´¥";
-                    MessageBox.Show("PLCè¿æ¥å¤±è´¥ï¼Œè¯·æ£€æŸ¥ç½‘ç»œè®¾ç½®", "è¿æ¥é”™è¯¯",
+                    TxtStatus.Text = "PLCÁ¬½ÓÊ§°Ü";
+                    MessageBox.Show("PLCÁ¬½ÓÊ§°Ü£¬Çë¼ì²éÍøÂçÉèÖÃ", "Á¬½Ó´íÎó",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"PLCè¿æ¥å¼‚å¸¸: {ex.Message}", "é”™è¯¯",
+                MessageBox.Show($"PLCÁ¬½ÓÒì³£: {ex.Message}", "´íÎó",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -425,17 +396,17 @@ namespace LumbarMassageTest
         {
             Dispatcher.Invoke(() =>
             {
-                TxtPLCStatus.Text = $"PLC: {(isConnected ? "å·²è¿æ¥" : "æœªè¿æ¥")}";
+                TxtPLCStatus.Text = $"PLC: {(isConnected ? "ÒÑÁ¬½Ó" : "Î´Á¬½Ó")}";
                 TxtPLCStatus.Foreground = isConnected ? Brushes.Green : Brushes.Red;
 
                 if (isConnected)
                 {
-                    TxtStatus.Text = "ç³»ç»Ÿå°±ç»ª - PLCå·²è¿æ¥";
+                    TxtStatus.Text = "ÏµÍ³¾ÍĞ÷ - PLCÒÑÁ¬½Ó";
                     _ = ApplyPendingPlcBitsInternalAsync();
                 }
                 else
                 {
-                    TxtStatus.Text = "ç³»ç»Ÿå°±ç»ª - PLCæœªè¿æ¥";
+                    TxtStatus.Text = "ÏµÍ³¾ÍĞ÷ - PLCÎ´Á¬½Ó";
                 }
             });
         }
@@ -450,16 +421,6 @@ namespace LumbarMassageTest
             Dispatcher.Invoke(UpdateMesStatusBar);
         }
 
-        private void SensorService_MeasurementsUpdated(object? sender, EventArgs e)
-        {
-            lock (_plcDataLock)
-            {
-                ApplySensorMeasurements(_currentPlcData);
-                _currentPlcData.LastUpdate = DateTime.Now;
-            }
-
-            Dispatcher.Invoke(UpdateUIWithPLCData);
-        }
 
         private async Task InitializeIntegrationModeAsync()
         {
@@ -470,23 +431,11 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError("åˆå§‹åŒ–MESé›†æˆé…ç½®å¤±è´¥", ex);
+                _logService.LogError("³õÊ¼»¯MES¼¯³ÉÅäÖÃÊ§°Ü", ex);
                 Dispatcher.Invoke(UpdateMesStatusBar);
             }
         }
 
-        private async Task InitializeSerialServicesAsync()
-        {
-            try
-            {
-                var config = await _configService.LoadAppConfigAsync().ConfigureAwait(false);
-                ApplySerialConfig(config);
-            }
-            catch (Exception ex)
-            {
-                _logService.LogError("åˆå§‹åŒ–ä¸²å£é…ç½®å¤±è´¥", ex);
-            }
-        }
 
         private async Task ApplyMesIntegrationAsync(AppConfig config)
         {
@@ -503,7 +452,7 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError("åº”ç”¨MESé›†æˆé…ç½®å¤±è´¥", ex);
+                _logService.LogError("Ó¦ÓÃMES¼¯³ÉÅäÖÃÊ§°Ü", ex);
             }
             finally
             {
@@ -518,10 +467,6 @@ namespace LumbarMassageTest
                 return;
             }
 
-            _serialDevice1Service.UpdateConfig(config.SerialDevice1);
-            _sensorService.UpdateConfig(config.SerialDevice2);
-            _sensorService.UpdateChannelCount(GetConfiguredChannelCount());
-            _sensorService.StartPolling(TimeSpan.FromMilliseconds(500));
             _testService.ConfigurePressureModule(config);
         }
 
@@ -531,13 +476,13 @@ namespace LumbarMassageTest
             if (mode == MesIntegrationMode.ModbusServer)
             {
                 bool running = _modbusService.IsRunning;
-                TxtMesStatusBar.Text = $"MES: Modbus({(running ? "å·²å¯ç”¨" : "æœªå¯ç”¨")})";
+                TxtMesStatusBar.Text = $"MES: Modbus({(running ? "ÒÑÆôÓÃ" : "Î´ÆôÓÃ")})";
                 TxtMesStatusBar.Foreground = running ? Brushes.Green : Brushes.Red;
             }
             else
             {
                 bool connected = _mesService.IsConnected;
-                TxtMesStatusBar.Text = $"MES: {(connected ? "å·²å¯ç”¨" : "æœªå¯ç”¨")}";
+                TxtMesStatusBar.Text = $"MES: {(connected ? "ÒÑÆôÓÃ" : "Î´ÆôÓÃ")}";
                 TxtMesStatusBar.Foreground = connected ? Brushes.Green : Brushes.Red;
             }
         }
@@ -575,11 +520,11 @@ namespace LumbarMassageTest
                     }
                     catch (OperationCanceledException)
                     {
-                        // é¢„æœŸçš„å–æ¶ˆ
+                        // Ô¤ÆÚµÄÈ¡Ïû
                     }
                     catch (ObjectDisposedException)
                     {
-                        // ä»»åŠ¡å·²è¢«æ¸…ç†
+                        // ÈÎÎñÒÑ±»ÇåÀí
                     }
                 }
             }
@@ -604,7 +549,7 @@ namespace LumbarMassageTest
                 {
                     if (_plcService.IsConnected)
                     {
-                        // è¯»å–Modbusç¦»æ•£è¾“å…¥(10000-10255)ä¸çº¿åœˆ(00000-00127)
+                        // ¶ÁÈ¡ModbusÀëÉ¢ÊäÈë(10000-10255)ÓëÏßÈ¦(00000-00127)
                         var config = _latestAppConfig ?? new AppConfig();
                         var inputResults = await _plcService.ReadBitsAsync("1x0000", config.PlcDiscreteInputCount);
                         var coilResults = await _plcService.ReadBitsAsync("0x0000", config.PlcCoilCount);
@@ -620,71 +565,41 @@ namespace LumbarMassageTest
 
                         lock (_plcDataLock)
                         {
-                            // ä½¿ç”¨PLCAddressMapperå°†åŸå§‹æ•°æ®æ˜ å°„åˆ°ç»“æ„åŒ–æ•°æ®
+                            // Ê¹ÓÃPLCAddressMapper½«Ô­Ê¼Êı¾İÓ³Éäµ½½á¹¹»¯Êı¾İ
                             PLCAddressMapper.MapModbusBitsToStructuredData(inputResults, coilResults, _currentPlcData, _currentModelForMapping);
-                            ApplySensorMeasurements(_currentPlcData);
 
                             _currentPlcData.LastUpdate = DateTime.Now;
 
-                            ch1Start = _currentPlcData.Channel1?.FullTestStart ?? false;
+                            ch1Start = (_currentPlcData.Channel1?.AirLeakStartButton ?? false) || (_currentPlcData.Channel1?.FullTestStart ?? false);
                             ch1Stop = _currentPlcData.Channel1?.StopButton ?? false;
-                            ch2Start = _currentPlcData.Channel2?.FullTestStart ?? false;
+                            ch2Start = (_currentPlcData.Channel2?.AirLeakStartButton ?? false) || (_currentPlcData.Channel2?.FullTestStart ?? false);
                             ch2Stop = _currentPlcData.Channel2?.StopButton ?? false;
-                            ch3Start = _currentPlcData.Channel3?.FullTestStart ?? false;
+                            ch3Start = (_currentPlcData.Channel3?.AirLeakStartButton ?? false) || (_currentPlcData.Channel3?.FullTestStart ?? false);
                             ch3Stop = _currentPlcData.Channel3?.StopButton ?? false;
-                            ch4Start = _currentPlcData.Channel4?.FullTestStart ?? false;
+                            ch4Start = (_currentPlcData.Channel4?.AirLeakStartButton ?? false) || (_currentPlcData.Channel4?.FullTestStart ?? false);
                             ch4Stop = _currentPlcData.Channel4?.StopButton ?? false;
                         }
 
                         HandlePlcSignals(ch1Start, ch1Stop, ch2Start, ch2Stop, ch3Start, ch3Stop, ch4Start, ch4Stop);
                         HandleFullTestHoldAbort(ch1Start, ch2Start, ch3Start, ch4Start);
 
-                        // é€šçŸ¥UIæ›´æ–°
+                        // Í¨ÖªUI¸üĞÂ
                         Dispatcher.Invoke(() =>
                         {
                             UpdateUIWithPLCData();
                         });
                     }
 
-                    await Task.Delay(100, cancellationToken); // æ¢å¤åˆ°100mså»¶è¿Ÿ
+                    await Task.Delay(100, cancellationToken); // »Ö¸´µ½100msÑÓ³Ù
                 }
                 catch (Exception ex)
                 {
-                    _logService.LogError("PLCè¯»å–é”™è¯¯", ex);
+                    _logService.LogError("PLC¶ÁÈ¡´íÎó", ex);
                     await Task.Delay(1000, cancellationToken);
                 }
             }
         }
 
-        private void ApplySensorMeasurements(PLCData plcData)
-        {
-            if (plcData == null)
-            {
-                return;
-            }
-
-            int chCount = GetConfiguredChannelCount();
-            UpdateChannelMeasurement(plcData.Channel1, 1);
-            UpdateChannelMeasurement(plcData.Channel2, 2);
-            if (chCount >= 3)
-                UpdateChannelMeasurement(plcData.Channel3, 3);
-            if (chCount >= 4)
-                UpdateChannelMeasurement(plcData.Channel4, 4);
-        }
-
-        private void UpdateChannelMeasurement(ChannelData channel, int channelIndex)
-        {
-            if (channel == null)
-            {
-                return;
-            }
-
-            if (_sensorService.TryGetMeasurement(channelIndex, out var measurement))
-            {
-                channel.CurrentRawValue = measurement.CurrentRaw;
-                channel.HeightRawValue = measurement.HeightRaw;
-            }
-        }
 
         private void HandlePlcSignals(
             bool ch1Start,
@@ -824,10 +739,6 @@ namespace LumbarMassageTest
                     return;
                 }
 
-                if (IsManualControlActive())
-                {
-                    return;
-                }
 
                 ShowTestControl();
 
@@ -841,7 +752,7 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError($"å¤„ç†é€šé“{channel}å¯åŠ¨ä¿¡å·å¤±è´¥", ex);
+                _logService.LogError($"´¦ÀíÍ¨µÀ{channel}Æô¶¯ĞÅºÅÊ§°Ü", ex);
             }
         }
 
@@ -849,10 +760,6 @@ namespace LumbarMassageTest
         {
             try
             {
-                if (IsManualControlActive())
-                {
-                    return;
-                }
 
                 await ResetResultBitsAsync(channel);
                 await SetChannelRunningBitAsync(channel, false);
@@ -864,14 +771,10 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError($"å¤„ç†é€šé“{channel}åœæ­¢ä¿¡å·å¤±è´¥", ex);
+                _logService.LogError($"´¦ÀíÍ¨µÀ{channel}Í£Ö¹ĞÅºÅÊ§°Ü", ex);
             }
         }
 
-        private bool IsManualControlActive()
-        {
-            return _manualControl != null && MainContentControl?.Content == _manualControl;
-        }
 
         private Task SetChannelRunningBitAsync(int channel, bool isRunning)
         {
@@ -921,7 +824,7 @@ namespace LumbarMassageTest
                 }
                 catch (TaskCanceledException)
                 {
-                    // å·²å–æ¶ˆï¼Œæ— éœ€å¤„ç†
+                    // ÒÑÈ¡Ïû£¬ÎŞĞè´¦Àí
                 }
                 finally
                 {
@@ -1021,7 +924,7 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError($"å†™å…¥PLCä½{address}å¤±è´¥", ex);
+                _logService.LogError($"Ğ´ÈëPLCÎ»{address}Ê§°Ü", ex);
                 _pendingPlcBitUpdates.Add(address);
             }
         }
@@ -1041,23 +944,18 @@ namespace LumbarMassageTest
             {
                 var uiSnapshot = BuildUiSnapshot();
 
-                // æ›´æ–°æ‰‹åŠ¨æ§åˆ¶ç•Œé¢
-                if (MainContentControl.Content is ManualControl manualControl)
-                {
-                    manualControl.UpdateWithPLCData(uiSnapshot);
-                }
-                else if (MainContentControl.Content is TestControl testControl)
+                if (MainContentControl.Content is TestControl testControl)
                 {
                     testControl.UpdateWithPLCData(uiSnapshot);
                 }
 
-                // æ›´æ–°çŠ¶æ€æ˜¾ç¤º
-                TxtPLCStatus.Text = $"PLC: {(_plcService.IsConnected ? "å·²è¿æ¥" : "æœªè¿æ¥")}";
+                // ¸üĞÂ×´Ì¬ÏÔÊ¾
+                TxtPLCStatus.Text = $"PLC: {(_plcService.IsConnected ? "ÒÑÁ¬½Ó" : "Î´Á¬½Ó")}";
                 TxtPLCStatus.Foreground = _plcService.IsConnected ? Brushes.Green : Brushes.Red;
             }
             catch (Exception ex)
             {
-                _logService.LogError("UIæ›´æ–°é”™è¯¯", ex);
+                _logService.LogError("UI¸üĞÂ´íÎó", ex);
             }
         }
 
@@ -1069,20 +967,6 @@ namespace LumbarMassageTest
                 snapshot = DeepCopyPLCData(_currentPlcData);
             }
 
-            lock (_massagePointOverrideLock)
-            {
-                foreach (var kvp in _massagePointOverrides)
-                {
-                    var channelData = GetChannelData(snapshot, kvp.Key);
-                    if (channelData == null)
-                    {
-                        continue;
-                    }
-
-                    int count = Math.Min(channelData.MassagePoints.Length, kvp.Value.Length);
-                    Array.Copy(kvp.Value, channelData.MassagePoints, count);
-                }
-            }
 
             return snapshot;
         }
@@ -1099,13 +983,6 @@ namespace LumbarMassageTest
             };
         }
 
-        private void ClearMassagePointOverride(int channel)
-        {
-            lock (_massagePointOverrideLock)
-            {
-                _massagePointOverrides.Remove(channel);
-            }
-        }
 
         public async Task<bool> WritePLCBit(string address, bool value)
         {
@@ -1113,7 +990,7 @@ namespace LumbarMassageTest
             {
                 await _plcService.WriteBitAsync(address, value);
 
-                // å†™å…¥æˆåŠŸåï¼Œæ›´æ–°æœ¬åœ°æ•°æ®ç»“æ„
+                // Ğ´Èë³É¹¦ºó£¬¸üĞÂ±¾µØÊı¾İ½á¹¹
                 lock (_plcDataLock)
                 {
                     UpdateLocalDataAfterWrite(address, value);
@@ -1123,7 +1000,7 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"PLCå†™å…¥é”™è¯¯: {ex.Message}", "é”™è¯¯", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"PLCĞ´Èë´íÎó: {ex.Message}", "´íÎó", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
@@ -1166,10 +1043,6 @@ namespace LumbarMassageTest
             }
         }
 
-        public ProductModel? GetCurrentModelForManual()
-        {
-            return _currentModelForMapping;
-        }
 
         public int GetConfiguredChannelCountForUi()
         {
@@ -1242,7 +1115,7 @@ namespace LumbarMassageTest
         {
             Dispatcher.Invoke(() =>
             {
-                MessageBox.Show($"PLCé”™è¯¯: {error}", "é”™è¯¯",
+                MessageBox.Show($"PLC´íÎó: {error}", "´íÎó",
                                 MessageBoxButton.OK, MessageBoxImage.Error);
             });
         }
@@ -1257,15 +1130,6 @@ namespace LumbarMassageTest
             ShowTestControl();
         }
 
-        private void BtnManual_Click(object sender, RoutedEventArgs e)
-        {
-            if (!EnsurePermission(Permission.Manual))
-            {
-                return;
-            }
-
-            ShowManualControl();
-        }
 
         private void BtnModel_Click(object sender, RoutedEventArgs e)
         {
@@ -1332,40 +1196,19 @@ namespace LumbarMassageTest
                     _testControl.SelectedModelChanged += model =>
                     {
                         _currentModelForMapping = model;
-                        _manualControl?.ApplyManualConfig(model);
-                        UpdateHeightReadingForModel(model);
                     };
                 }
                 MainContentControl.Content = _testControl;
                 ResetButtonStyles();
                 BtnTest.Background = GetNavBrush("NavButtonSelectedBrush");
                 _currentModelForMapping = _testControl.SelectedModel;
-                UpdateHeightReadingForModel(_currentModelForMapping);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"åŠ è½½æµ‹è¯•æ§ä»¶å¤±è´¥: {ex.Message}", "é”™è¯¯", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"¼ÓÔØ²âÊÔ¿Ø¼şÊ§°Ü: {ex.Message}", "´íÎó", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        private void ShowManualControl()
-        {
-            try
-            {
-                if (_manualControl == null)
-                {
-                    _manualControl = new ManualControl(_commService, _logService);
-                }
-                MainContentControl.Content = _manualControl;
-                ResetButtonStyles();
-                BtnManual.Background = GetNavBrush("NavButtonSelectedBrush");
-                _manualControl.ApplyManualConfig(_currentModelForMapping);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"åŠ è½½æ‰‹åŠ¨æ§ä»¶å¤±è´¥: {ex.Message}", "é”™è¯¯", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
 
         private void ShowModelControl()
         {
@@ -1381,8 +1224,8 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError("åŠ è½½æœºå‹æ§ä»¶å¤±è´¥", ex);
-                MessageBox.Show($"åŠ è½½æœºå‹æ§ä»¶å¤±è´¥: {ex.Message}", "é”™è¯¯", MessageBoxButton.OK, MessageBoxImage.Error);
+                _logService.LogError("¼ÓÔØ»úĞÍ¿Ø¼şÊ§°Ü", ex);
+                MessageBox.Show($"¼ÓÔØ»úĞÍ¿Ø¼şÊ§°Ü: {ex.Message}", "´íÎó", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1400,8 +1243,8 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError("åŠ è½½æŠ¥è¡¨æ§ä»¶å¤±è´¥", ex);
-                MessageBox.Show($"åŠ è½½æŠ¥è¡¨æ§ä»¶å¤±è´¥: {ex.Message}", "é”™è¯¯", MessageBoxButton.OK, MessageBoxImage.Error);
+                _logService.LogError("¼ÓÔØ±¨±í¿Ø¼şÊ§°Ü", ex);
+                MessageBox.Show($"¼ÓÔØ±¨±í¿Ø¼şÊ§°Ü: {ex.Message}", "´íÎó", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1419,8 +1262,8 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError("åŠ è½½ç”¨æˆ·æ§ä»¶å¤±è´¥", ex);
-                MessageBox.Show($"åŠ è½½ç”¨æˆ·æ§ä»¶å¤±è´¥: {ex.Message}", "é”™è¯¯", MessageBoxButton.OK, MessageBoxImage.Error);
+                _logService.LogError("¼ÓÔØÓÃ»§¿Ø¼şÊ§°Ü", ex);
+                MessageBox.Show($"¼ÓÔØÓÃ»§¿Ø¼şÊ§°Ü: {ex.Message}", "´íÎó", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1439,8 +1282,8 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError("åŠ è½½ç³»ç»Ÿè®¾ç½®æ§ä»¶å¤±è´¥", ex);
-                MessageBox.Show($"åŠ è½½ç³»ç»Ÿè®¾ç½®æ§ä»¶å¤±è´¥: {ex.Message}", "é”™è¯¯", MessageBoxButton.OK, MessageBoxImage.Error);
+                _logService.LogError("¼ÓÔØÏµÍ³ÉèÖÃ¿Ø¼şÊ§°Ü", ex);
+                MessageBox.Show($"¼ÓÔØÏµÍ³ÉèÖÃ¿Ø¼şÊ§°Ü: {ex.Message}", "´íÎó", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1455,8 +1298,8 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError("åŠ è½½ç³»ç»Ÿæ—¥å¿—æ§ä»¶å¤±è´¥", ex);
-                MessageBox.Show($"åŠ è½½ç³»ç»Ÿæ—¥å¿—æ§ä»¶å¤±è´¥: {ex.Message}", "é”™è¯¯", MessageBoxButton.OK, MessageBoxImage.Error);
+                _logService.LogError("¼ÓÔØÏµÍ³ÈÕÖ¾¿Ø¼şÊ§°Ü", ex);
+                MessageBox.Show($"¼ÓÔØÏµÍ³ÈÕÖ¾¿Ø¼şÊ§°Ü: {ex.Message}", "´íÎó", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1466,11 +1309,6 @@ namespace LumbarMassageTest
             ApplySerialConfig(config);
         }
 
-        private void UpdateHeightReadingForModel(ProductModel? model)
-        {
-            // æœºå‹æœªå¯ç”¨è…°æ‰˜æµ‹è¯•æ—¶ï¼Œä¸è¯»å–ç¼–ç å™¨ã€‚
-            _sensorService.EnableHeightReading = model?.ProcessConfig?.EnableLumbarTest ?? true;
-        }
 
         private void ShowHelpControl()
         {
@@ -1483,8 +1321,8 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError("åŠ è½½ä½¿ç”¨å¸®åŠ©æ§ä»¶å¤±è´¥", ex);
-                MessageBox.Show($"åŠ è½½ä½¿ç”¨å¸®åŠ©æ§ä»¶å¤±è´¥: {ex.Message}", "é”™è¯¯", MessageBoxButton.OK, MessageBoxImage.Error);
+                _logService.LogError("¼ÓÔØÊ¹ÓÃ°ïÖú¿Ø¼şÊ§°Ü", ex);
+                MessageBox.Show($"¼ÓÔØÊ¹ÓÃ°ïÖú¿Ø¼şÊ§°Ü: {ex.Message}", "´íÎó", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1492,7 +1330,6 @@ namespace LumbarMassageTest
         {
             var defaultBrush = GetNavBrush("NavButtonDefaultBrush");
             BtnTest.Background = defaultBrush;
-            BtnManual.Background = defaultBrush;
             BtnModel.Background = defaultBrush;
             BtnReport.Background = defaultBrush;
             BtnUser.Background = defaultBrush;
@@ -1511,7 +1348,7 @@ namespace LumbarMassageTest
 
         private void BtnLogout_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show("ç¡®å®šè¦æ³¨é”€å½“å‰ç”¨æˆ·å—ï¼Ÿ", "æ³¨é”€ç¡®è®¤",
+            var result = MessageBox.Show("È·¶¨Òª×¢Ïúµ±Ç°ÓÃ»§Âğ£¿", "×¢ÏúÈ·ÈÏ",
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
 
             if (result == MessageBoxResult.Yes)
@@ -1532,7 +1369,7 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError("ä¿å­˜æµ‹è¯•ç•Œé¢çŠ¶æ€å¤±è´¥", ex);
+                _logService.LogError("±£´æ²âÊÔ½çÃæ×´Ì¬Ê§°Ü", ex);
             }
 
             if (_plcService != null)
@@ -1556,10 +1393,9 @@ namespace LumbarMassageTest
                 _testService.OnTestStageChanged -= TestService_OnStageChanged;
                 _testService.OnTestCompleted -= TestService_OnTestCompleted;
                 _testService.OnTestCompleted -= TestService_OnTestCompletedSaveRecord;
-                _testService.OnMassagePointSampled -= TestService_OnMassagePointSampled;
             }
 
-            // æ¸…ç†èµ„æº
+            // ÇåÀí×ÊÔ´
             if (_timer != null)
             {
                 _timer.Stop();
@@ -1567,7 +1403,7 @@ namespace LumbarMassageTest
                 _timer = null;
             }
 
-            // æ–­å¼€PLCè¿æ¥
+            // ¶Ï¿ªPLCÁ¬½Ó
             await StopPLCReadingAsync().ConfigureAwait(false);
 
             try
@@ -1577,7 +1413,7 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError("é‡Šæ”¾æµ‹è¯•æœåŠ¡å¤±è´¥", ex);
+                _logService.LogError("ÊÍ·Å²âÊÔ·şÎñÊ§°Ü", ex);
             }
 
             if (_plcService != null)
@@ -1588,7 +1424,7 @@ namespace LumbarMassageTest
                 }
                 catch (Exception ex)
                 {
-                    _logService.LogError("æ–­å¼€PLCè¿æ¥å¤±è´¥", ex);
+                    _logService.LogError("¶Ï¿ªPLCÁ¬½ÓÊ§°Ü", ex);
                 }
             }
 
@@ -1598,7 +1434,7 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError("é‡Šæ”¾MESæœåŠ¡å¤±è´¥", ex);
+                _logService.LogError("ÊÍ·ÅMES·şÎñÊ§°Ü", ex);
             }
 
             try
@@ -1607,26 +1443,10 @@ namespace LumbarMassageTest
             }
             catch (Exception ex)
             {
-                _logService.LogError("é‡Šæ”¾ModbusæœåŠ¡å¤±è´¥", ex);
+                _logService.LogError("ÊÍ·ÅModbus·şÎñÊ§°Ü", ex);
             }
 
-            try
-            {
-                _sensorService?.Dispose();
-            }
-            catch (Exception ex)
-            {
-                _logService.LogError("é‡Šæ”¾é‡‡é›†æœåŠ¡å¤±è´¥", ex);
-            }
 
-            try
-            {
-                _serialDevice1Service?.Dispose();
-            }
-            catch (Exception ex)
-            {
-                _logService.LogError("é‡Šæ”¾ä¸²å£æœåŠ¡å¤±è´¥", ex);
-            }
 
             //_plcService?.Disconnect();
 
@@ -1656,14 +1476,14 @@ namespace LumbarMassageTest
                 bool result = await _mesService.SendTestRecordAsync(record, config).ConfigureAwait(false);
                 if (!result)
                 {
-                    _logService.LogWarning("MESæ¨é€æœªæˆåŠŸï¼Œè¯·æ£€æŸ¥é…ç½®æˆ–ç½‘ç»œçŠ¶æ€ã€‚");
+                    _logService.LogWarning("MESÍÆËÍÎ´³É¹¦£¬Çë¼ì²éÅäÖÃ»òÍøÂç×´Ì¬¡£");
                 }
 
                 return result;
             }
             catch (Exception ex)
             {
-                _logService.LogError("æ¨é€MESæµ‹è¯•è®°å½•å¤±è´¥", ex);
+                _logService.LogError("ÍÆËÍMES²âÊÔ¼ÇÂ¼Ê§°Ü", ex);
                 return false;
             }
         }

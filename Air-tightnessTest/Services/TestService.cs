@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -21,14 +21,8 @@ namespace LumbarMassageTest.Services
         public event EventHandler<TestRecord>? OnTestCompleted;
         public event EventHandler<TestMessageEventArgs>? OnTestMessage;
         public event EventHandler<ChannelTestResultEventArgs>? OnTestResultDisplay;
-        public event EventHandler<MassagePointSampleEventArgs>? OnMassagePointSampled;
 
-        public TestService(IPLCService plcService, CommService commService, SensorModbusService sensorService)
-            : this(plcService, commService, sensorService, LogService.Instance)
-        {
-        }
-
-        public TestService(IPLCService plcService, CommService commService, SensorModbusService sensorService, ILogService? logService)
+        public TestService(IPLCService plcService, ILogService? logService = null)
         {
             _plcService = plcService ?? throw new ArgumentNullException(nameof(plcService));
             _logService = logService ?? LogService.Instance;
@@ -47,13 +41,13 @@ namespace LumbarMassageTest.Services
 
             if (options.Model == null)
             {
-                RaiseTestMessage("æœªé€‰æ‹©äº§å“å‹å·");
+                RaiseTestMessage("Î´Ñ¡Ôñ²úÆ·ĞÍºÅ");
                 return false;
             }
 
             if (string.IsNullOrWhiteSpace(options.WorkOrder))
             {
-                RaiseTestMessage("å·¥å•å·ä¸èƒ½ä¸ºç©º");
+                RaiseTestMessage("¹¤µ¥ºÅ²»ÄÜÎª¿Õ");
                 return false;
             }
 
@@ -61,7 +55,7 @@ namespace LumbarMassageTest.Services
             var process = options.Model.ProcessConfig ?? new TestProcessConfig();
             if (process.EnableBarcodeCheck && string.IsNullOrWhiteSpace(options.Barcode))
             {
-                RaiseTestMessage("è¯·å…ˆæ‰«ç ", options.Channel);
+                RaiseTestMessage("ÇëÏÈÉ¨Âë", options.Channel);
                 return false;
             }
 
@@ -76,7 +70,7 @@ namespace LumbarMassageTest.Services
 
             if (channelConfig == null)
             {
-                RaiseTestMessage($"é€šé“{options.Channel}ç¼ºå°‘é…ç½®", options.Channel);
+                RaiseTestMessage($"Í¨µÀ{options.Channel}È±ÉÙÅäÖÃ", options.Channel);
                 return false;
             }
 
@@ -84,7 +78,7 @@ namespace LumbarMassageTest.Services
             {
                 if (_activeChannels.ContainsKey(options.Channel))
                 {
-                    RaiseTestMessage($"é€šé“{options.Channel}æ­£åœ¨æµ‹è¯•ä¸­", options.Channel);
+                    RaiseTestMessage($"Í¨µÀ{options.Channel}ÕıÔÚ²âÊÔÖĞ", options.Channel);
                     return false;
                 }
             }
@@ -124,7 +118,7 @@ namespace LumbarMassageTest.Services
 
             try
             {
-                RaiseTestMessage($"é€šé“{options.Channel}å¼€å§‹æ°”å¯†æ€§æµ‹è¯•", options.Channel);
+                RaiseTestMessage($"Í¨µÀ{options.Channel}¿ªÊ¼ÆøÃÜĞÔ²âÊÔ", options.Channel);
                 return await RunChannelTestAsync(context).ConfigureAwait(false);
             }
             finally
@@ -179,57 +173,57 @@ namespace LumbarMassageTest.Services
             try
             {
                 if (!await ExecuteStageAsync(context, TestStage.Standby, EnsureStandbyAsync).ConfigureAwait(false))
-                    return await FailAsync(context, "å¾…æœºæ£€æŸ¥å¤±è´¥").ConfigureAwait(false);
+                    return await FailAsync(context, "´ı»ú¼ì²éÊ§°Ü").ConfigureAwait(false);
 
                 if (!await ExecuteStageAsync(context, TestStage.ScanBarcode, ConfirmBarcodeAsync).ConfigureAwait(false))
-                    return await FailAsync(context, "æ‰«ç å¤±è´¥").ConfigureAwait(false);
+                    return await FailAsync(context, "É¨ÂëÊ§°Ü").ConfigureAwait(false);
 
                 if (!await ExecuteStageAsync(context, TestStage.StartTest, BeginAirLeakTestAsync).ConfigureAwait(false))
-                    return await FailAsync(context, "å¯åŠ¨æµ‹è¯•å¤±è´¥").ConfigureAwait(false);
+                    return await FailAsync(context, "Æô¶¯²âÊÔÊ§°Ü").ConfigureAwait(false);
 
                 if (!await ExecuteStageAsync(context, TestStage.HighPressureInflate, PerformHighPressureInflateAsync).ConfigureAwait(false))
-                    return await FailAsync(context, "é«˜å‹è¿›æ°”å¤±è´¥").ConfigureAwait(false);
+                    return await FailAsync(context, "¸ßÑ¹½øÆøÊ§°Ü").ConfigureAwait(false);
 
                 if (!await ExecuteStageAsync(context, TestStage.HighPressureStabilize, PerformHighPressureStabilizeAsync).ConfigureAwait(false))
-                    return await FailAsync(context, "é«˜å‹é™ç½®å¤±è´¥").ConfigureAwait(false);
+                    return await FailAsync(context, "¸ßÑ¹¾²ÖÃÊ§°Ü").ConfigureAwait(false);
 
                 if (!await ExecuteStageAsync(context, TestStage.HighPressureLeakCheck, PerformHighPressureLeakCheckAsync).ConfigureAwait(false))
                 {
                     await ExecuteStageAsync(context, TestStage.HighPressureExhaust, PerformHighPressureExhaustAsync).ConfigureAwait(false);
-                    return await FailAsync(context, BuildStageFailReason(context, TestStage.HighPressureLeakCheck, "é«˜å‹æ°”å¯†æ€§ä¸åˆæ ¼")).ConfigureAwait(false);
+                    return await FailAsync(context, BuildStageFailReason(context, TestStage.HighPressureLeakCheck, "¸ßÑ¹ÆøÃÜĞÔ²»ºÏ¸ñ")).ConfigureAwait(false);
                 }
 
                 if (!await ExecuteStageAsync(context, TestStage.HighPressureExhaust, PerformHighPressureExhaustAsync).ConfigureAwait(false))
-                    return await FailAsync(context, "é«˜å‹æ’æ°”å¤±è´¥").ConfigureAwait(false);
+                    return await FailAsync(context, "¸ßÑ¹ÅÅÆøÊ§°Ü").ConfigureAwait(false);
 
                 if (!await ExecuteStageAsync(context, TestStage.LowPressureInflate, PerformLowPressureInflateAsync).ConfigureAwait(false))
-                    return await FailAsync(context, "ä½å‹è¿›æ°”å¤±è´¥").ConfigureAwait(false);
+                    return await FailAsync(context, "µÍÑ¹½øÆøÊ§°Ü").ConfigureAwait(false);
 
                 if (!await ExecuteStageAsync(context, TestStage.LowPressureStabilize, PerformLowPressureStabilizeAsync).ConfigureAwait(false))
-                    return await FailAsync(context, "ä½å‹é™ç½®å¤±è´¥").ConfigureAwait(false);
+                    return await FailAsync(context, "µÍÑ¹¾²ÖÃÊ§°Ü").ConfigureAwait(false);
 
                 if (!await ExecuteStageAsync(context, TestStage.LowPressureLeakCheck, PerformLowPressureLeakCheckAsync).ConfigureAwait(false))
                 {
                     await ExecuteStageAsync(context, TestStage.LowPressureExhaust, PerformLowPressureExhaustAsync).ConfigureAwait(false);
-                    return await FailAsync(context, BuildStageFailReason(context, TestStage.LowPressureLeakCheck, "ä½å‹æ°”å¯†æ€§ä¸åˆæ ¼")).ConfigureAwait(false);
+                    return await FailAsync(context, BuildStageFailReason(context, TestStage.LowPressureLeakCheck, "µÍÑ¹ÆøÃÜĞÔ²»ºÏ¸ñ")).ConfigureAwait(false);
                 }
 
                 if (!await ExecuteStageAsync(context, TestStage.LowPressureExhaust, PerformLowPressureExhaustAsync).ConfigureAwait(false))
-                    return await FailAsync(context, "ä½å‹æ’æ°”å¤±è´¥").ConfigureAwait(false);
+                    return await FailAsync(context, "µÍÑ¹ÅÅÆøÊ§°Ü").ConfigureAwait(false);
 
                 await ExecuteStageAsync(context, TestStage.Completed, CompleteStageAsync).ConfigureAwait(false);
-                await FinalizeTestAsync(context, true, "æ°”å¯†æ€§æµ‹è¯•å®Œæˆ").ConfigureAwait(false);
+                await FinalizeTestAsync(context, true, "ÆøÃÜĞÔ²âÊÔÍê³É").ConfigureAwait(false);
                 return true;
             }
             catch (OperationCanceledException)
             {
-                await FinalizeTestAsync(context, false, "æµ‹è¯•è¢«ç»ˆæ­¢", aborted: true).ConfigureAwait(false);
+                await FinalizeTestAsync(context, false, "²âÊÔ±»ÖÕÖ¹", aborted: true).ConfigureAwait(false);
                 return false;
             }
             catch (Exception ex)
             {
-                _logService.LogError("æ°”å¯†æ€§æµ‹è¯•å¼‚å¸¸", ex);
-                await FinalizeTestAsync(context, false, $"æµ‹è¯•å¼‚å¸¸: {ex.Message}").ConfigureAwait(false);
+                _logService.LogError("ÆøÃÜĞÔ²âÊÔÒì³£", ex);
+                await FinalizeTestAsync(context, false, $"²âÊÔÒì³£: {ex.Message}").ConfigureAwait(false);
                 return false;
             }
         }
@@ -237,7 +231,7 @@ namespace LumbarMassageTest.Services
         private Task<StageExecutionResult> EnsureStandbyAsync(ChannelTestContext context, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
-            return Task.FromResult(StageExecutionResult.Pass("å¾…æœºæ­£å¸¸"));
+            return Task.FromResult(StageExecutionResult.Pass("´ı»úÕı³£"));
         }
 
         private Task<StageExecutionResult> ConfirmBarcodeAsync(ChannelTestContext context, CancellationToken token)
@@ -246,12 +240,12 @@ namespace LumbarMassageTest.Services
             var process = context.Model.ProcessConfig ?? new TestProcessConfig();
             if (!process.EnableBarcodeCheck)
             {
-                return Task.FromResult(StageExecutionResult.Pass("å·²è·³è¿‡æ‰«ç æ£€æŸ¥"));
+                return Task.FromResult(StageExecutionResult.Pass("ÒÑÌø¹ıÉ¨Âë¼ì²é"));
             }
 
             if (string.IsNullOrWhiteSpace(context.Options.Barcode))
             {
-                return Task.FromResult(StageExecutionResult.Fail("æœªæ‰«ææ¡ç "));
+                return Task.FromResult(StageExecutionResult.Fail("Î´É¨ÃèÌõÂë"));
             }
 
             if (process.EnableBarcodePrefixCheck)
@@ -259,22 +253,22 @@ namespace LumbarMassageTest.Services
                 string prefix = process.BarcodePrefix?.Trim() ?? string.Empty;
                 if (!string.IsNullOrWhiteSpace(prefix) && !context.Options.Barcode.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                 {
-                    return Task.FromResult(StageExecutionResult.Fail($"æ¡ç å‰ç¼€ä¸åŒ¹é…ï¼Œè¦æ±‚: {prefix}"));
+                    return Task.FromResult(StageExecutionResult.Fail($"ÌõÂëÇ°×º²»Æ¥Åä£¬ÒªÇó: {prefix}"));
                 }
             }
 
             if (context.Record.DuplicateCount > 1 && process.PromptOnDuplicateBarcode && !context.Options.ContinueOnDuplicate)
             {
-                return Task.FromResult(StageExecutionResult.Fail($"é‡å¤æ¡ç ï¼Œç¬¬{context.Record.DuplicateCount}æ¬¡æµ‹è¯•å·²å–æ¶ˆ"));
+                return Task.FromResult(StageExecutionResult.Fail($"ÖØ¸´ÌõÂë£¬µÚ{context.Record.DuplicateCount}´Î²âÊÔÒÑÈ¡Ïû"));
             }
 
-            return Task.FromResult(StageExecutionResult.Pass("æ‰«ç æˆåŠŸ"));
+            return Task.FromResult(StageExecutionResult.Pass("É¨Âë³É¹¦"));
         }
 
         private Task<StageExecutionResult> BeginAirLeakTestAsync(ChannelTestContext context, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
-            return Task.FromResult(StageExecutionResult.Pass($"é€šé“{context.Channel}å¯åŠ¨æ°”å¯†æ€§æµ‹è¯•"));
+            return Task.FromResult(StageExecutionResult.Pass($"Í¨µÀ{context.Channel}Æô¶¯ÆøÃÜĞÔ²âÊÔ"));
         }
 
         private Task<StageExecutionResult> PerformHighPressureInflateAsync(ChannelTestContext context, CancellationToken token)
@@ -284,21 +278,21 @@ namespace LumbarMassageTest.Services
             => InflateAsync(context, false, token);
 
         private Task<StageExecutionResult> PerformHighPressureStabilizeAsync(ChannelTestContext context, CancellationToken token)
-            => DelayStageAsync(context, TestStage.HighPressureStabilize, "é«˜å‹é™ç½®", GetSettings(context).HighStabilizeDurationMs, token);
+            => DelayStageAsync(context, TestStage.HighPressureStabilize, "¸ßÑ¹¾²ÖÃ", GetSettings(context).HighStabilizeDurationMs, token);
 
         private Task<StageExecutionResult> PerformLowPressureStabilizeAsync(ChannelTestContext context, CancellationToken token)
-            => DelayStageAsync(context, TestStage.LowPressureStabilize, "ä½å‹é™ç½®", GetSettings(context).LowStabilizeDurationMs, token);
+            => DelayStageAsync(context, TestStage.LowPressureStabilize, "µÍÑ¹¾²ÖÃ", GetSettings(context).LowStabilizeDurationMs, token);
 
         private Task<StageExecutionResult> PerformHighPressureLeakCheckAsync(ChannelTestContext context, CancellationToken token)
         {
             var settings = GetSettings(context);
-            return LeakCheckAsync(context, TestStage.HighPressureLeakCheck, "é«˜å‹", settings.HighDetectDurationMs, settings.HighMaxDropKPa, "KPa", 1.0, token);
+            return LeakCheckAsync(context, TestStage.HighPressureLeakCheck, "¸ßÑ¹", settings.HighDetectDurationMs, settings.HighMaxDropKPa, "KPa", 1.0, token);
         }
 
         private Task<StageExecutionResult> PerformLowPressureLeakCheckAsync(ChannelTestContext context, CancellationToken token)
         {
             var settings = GetSettings(context);
-            return LeakCheckAsync(context, TestStage.LowPressureLeakCheck, "ä½å‹", settings.LowDetectDurationMs, settings.LowMaxDropPa, "Pa", 1000.0, token);
+            return LeakCheckAsync(context, TestStage.LowPressureLeakCheck, "µÍÑ¹", settings.LowDetectDurationMs, settings.LowMaxDropPa, "Pa", 1000.0, token);
         }
 
         private Task<StageExecutionResult> PerformHighPressureExhaustAsync(ChannelTestContext context, CancellationToken token)
@@ -311,39 +305,39 @@ namespace LumbarMassageTest.Services
         {
             var settings = GetSettings(context);
             int duration = highPressure ? settings.HighInflateDurationMs : settings.LowInflateDurationMs;
-            string name = highPressure ? "é«˜å‹" : "ä½å‹";
+            string name = highPressure ? "¸ßÑ¹" : "µÍÑ¹";
             var stage = highPressure ? TestStage.HighPressureInflate : TestStage.LowPressureInflate;
 
             double outputPressure = highPressure ? settings.HighOutputPressureKPa : settings.LowOutputPressureKPa;
             await _pressureService.WriteOutputPressureAsync(context.Channel, outputPressure, context.ChannelConfig.PressureConfig, token).ConfigureAwait(false);
             await WriteValveAsync(GetExhaustValveAddress(context, highPressure), false).ConfigureAwait(false);
             await WriteValveAsync(GetInletValveAddress(context, highPressure), true).ConfigureAwait(false);
-            RaiseStageChanged(context, stage, StepExecutionState.Running, $"{name}è¿›æ°”ä¸­ {duration}msï¼Œè¾“å‡ºè®¾å®š {outputPressure:F1}KPa");
+            RaiseStageChanged(context, stage, StepExecutionState.Running, $"{name}½øÆøÖĞ {duration}ms£¬Êä³öÉè¶¨ {outputPressure:F1}KPa");
             await Task.Delay(Math.Max(0, duration), token).ConfigureAwait(false);
             await WriteValveAsync(GetInletValveAddress(context, highPressure), false).ConfigureAwait(false);
-            return StageExecutionResult.Pass($"{name}è¿›æ°”å®Œæˆ");
+            return StageExecutionResult.Pass($"{name}½øÆøÍê³É");
         }
 
         private async Task<StageExecutionResult> ExhaustAsync(ChannelTestContext context, bool highPressure, CancellationToken token)
         {
             var settings = GetSettings(context);
             int duration = highPressure ? settings.HighExhaustDurationMs : settings.LowExhaustDurationMs;
-            string name = highPressure ? "é«˜å‹" : "ä½å‹";
+            string name = highPressure ? "¸ßÑ¹" : "µÍÑ¹";
             var stage = highPressure ? TestStage.HighPressureExhaust : TestStage.LowPressureExhaust;
 
             await WriteValveAsync(GetInletValveAddress(context, highPressure), false).ConfigureAwait(false);
             await WriteValveAsync(GetExhaustValveAddress(context, highPressure), true).ConfigureAwait(false);
-            RaiseStageChanged(context, stage, StepExecutionState.Running, $"{name}æ’æ°”ä¸­ {duration}ms");
+            RaiseStageChanged(context, stage, StepExecutionState.Running, $"{name}ÅÅÆøÖĞ {duration}ms");
             await Task.Delay(Math.Max(0, duration), token).ConfigureAwait(false);
             await WriteValveAsync(GetExhaustValveAddress(context, highPressure), false).ConfigureAwait(false);
-            return StageExecutionResult.Pass($"{name}æ’æ°”å®Œæˆ");
+            return StageExecutionResult.Pass($"{name}ÅÅÆøÍê³É");
         }
 
         private async Task<StageExecutionResult> DelayStageAsync(ChannelTestContext context, TestStage stage, string name, int duration, CancellationToken token)
         {
             RaiseStageChanged(context, stage, StepExecutionState.Running, $"{name} {duration}ms");
             await Task.Delay(Math.Max(0, duration), token).ConfigureAwait(false);
-            return StageExecutionResult.Pass($"{name}å®Œæˆ");
+            return StageExecutionResult.Pass($"{name}Íê³É");
         }
 
         private async Task<StageExecutionResult> LeakCheckAsync(
@@ -359,7 +353,7 @@ namespace LumbarMassageTest.Services
             var pressureConfig = context.ChannelConfig.PressureConfig ?? new PressureChannelConfig();
             DateTime startTime = DateTime.Now;
             double startKPa = await _pressureService.ReadPressureKPaAsync(context.Channel, pressureConfig, token).ConfigureAwait(false);
-            RaiseStageChanged(context, stage, StepExecutionState.Running, $"{phase}èµ·å§‹å‹åŠ› {(startKPa * scale):F2}{unit}");
+            RaiseStageChanged(context, stage, StepExecutionState.Running, $"{phase}ÆğÊ¼Ñ¹Á¦ {(startKPa * scale):F2}{unit}");
 
             int interval = Math.Max(50, GetSettings(context).PressureSampleIntervalMs);
             int elapsed = 0;
@@ -378,8 +372,8 @@ namespace LumbarMassageTest.Services
             double drop = Math.Max(0, start - end);
             bool passed = drop <= limit;
             string message = passed
-                ? $"{phase}å‹å·®{drop:F2}{unit}ï¼Œåˆæ ¼(â‰¤{limit:F2}{unit})"
-                : $"{phase}å‹å·®{drop:F2}{unit}ï¼Œä¸åˆæ ¼(>{limit:F2}{unit})";
+                ? $"{phase}Ñ¹²î{drop:F2}{unit}£¬ºÏ¸ñ(¡Ü{limit:F2}{unit})"
+                : $"{phase}Ñ¹²î{drop:F2}{unit}£¬²»ºÏ¸ñ(>{limit:F2}{unit})";
 
             context.Record.AirLeakResults.Add(new AirLeakPressureResult
             {
@@ -403,7 +397,7 @@ namespace LumbarMassageTest.Services
         private Task<StageExecutionResult> CompleteStageAsync(ChannelTestContext context, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
-            return Task.FromResult(StageExecutionResult.Pass("æ‰€æœ‰é¡¹ç›®å®Œæˆ"));
+            return Task.FromResult(StageExecutionResult.Pass("ËùÓĞÏîÄ¿Íê³É"));
         }
 
         private async Task<bool> ExecuteStageAsync(ChannelTestContext context, TestStage stage, Func<ChannelTestContext, CancellationToken, Task<StageExecutionResult>> action)
@@ -434,7 +428,7 @@ namespace LumbarMassageTest.Services
             {
                 result.EndTime = DateTime.Now;
                 result.State = StepExecutionState.Failed;
-                result.Message = "æµ‹è¯•å–æ¶ˆ";
+                result.Message = "²âÊÔÈ¡Ïû";
                 RaiseStageChanged(context, stage, StepExecutionState.Failed, result.Message);
                 throw;
             }
@@ -470,7 +464,7 @@ namespace LumbarMassageTest.Services
 
             OnTestResultDisplay?.Invoke(this, new ChannelTestResultEventArgs { Channel = context.Channel, IsOk = success });
             OnTestCompleted?.Invoke(this, record);
-            RaiseTestMessage($"é€šé“{context.Channel}æµ‹è¯•ç»“æŸ: {message}", context.Channel);
+            RaiseTestMessage($"Í¨µÀ{context.Channel}²âÊÔ½áÊø: {message}", context.Channel);
         }
 
         private async Task CloseAllPressureValvesAsync(ChannelTestContext context)

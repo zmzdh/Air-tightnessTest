@@ -1,7 +1,7 @@
-﻿<Window x:Class="LumbarMassageTest.MainWindow"
+<Window x:Class="LumbarMassageTest.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="上海舒井汽车汽车科技系统有限公司腰托按摩控制板检测系统" Height="1440" Width="3440" MinWidth="2560" MinHeight="1200"
+        Title="&#x4E0A;&#x6D77;&#x8212;&#x4E95;&#x6C14;&#x5BC6;&#x6027;&#x6D4B;&#x8BD5;&#x7CFB;&#x7EDF;" Height="1440" Width="3440" MinWidth="2560" MinHeight="1200"
         WindowState="Maximized"
         WindowStartupLocation="CenterScreen">
 
@@ -68,7 +68,7 @@
                         <Border Width="67" Height="45" Background="White" CornerRadius="20" Padding="2">
                             <Image Source="pack://application:,,,/舒井logo.jpg" Stretch="Uniform" Width="60" Height="36"/>
                         </Border>
-                        <TextBlock Text="上海舒井阀体控制板检测系统" Foreground="White"
+                        <TextBlock Text="&#x4E0A;&#x6D77;&#x8212;&#x4E95;&#x6C14;&#x5BC6;&#x6027;&#x6D4B;&#x8BD5;&#x7CFB;&#x7EDF;" Foreground="White"
                                    FontSize="26" FontWeight="Bold" Margin="12,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
 
@@ -76,8 +76,6 @@
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0">
                         <Button Name="BtnTest" Content="测试界面" Style="{StaticResource NavButtonStyle}"
                                 Click="BtnTest_Click"/>
-                        <Button Name="BtnManual" Content="手动调试" Style="{StaticResource NavButtonStyle}" 
-                                Click="BtnManual_Click"/>
                         <Button Name="BtnModel" Content="机型配方" Style="{StaticResource NavButtonStyle}" 
                                 Click="BtnModel_Click"/>
                         <Button Name="BtnReport" Content="生产报表" Style="{StaticResource NavButtonStyle}" 

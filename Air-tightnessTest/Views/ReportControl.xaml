@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="LumbarMassageTest.UserControls.ReportControl"
+<UserControl x:Class="LumbarMassageTest.UserControls.ReportControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
@@ -164,12 +164,6 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="静态电流(mA)" Binding="{Binding StaticCurrent, StringFormat=F1}" Width="100"/>
-                            <DataGridTextColumn Header="按摩平均电流(mA)" Binding="{Binding MassageAverageCurrent, StringFormat=F1}" Width="150"/>
-                            <DataGridTextColumn Header="按摩最大电流(mA)" Binding="{Binding MassageMaxCurrent, StringFormat=F1}" Width="150"/>
-                            <DataGridTextColumn Header="腰托平均电流(mA)" Binding="{Binding LumbarAverageCurrent, StringFormat=F1}" Width="150"/>
-                            <DataGridTextColumn Header="腰托最大电流(mA)" Binding="{Binding LumbarMaxCurrent, StringFormat=F1}" Width="150"/>
-                            <DataGridTextColumn Header="测试电压(V)" Binding="{Binding TestVoltage, StringFormat=F1}" Width="100"/>
                             <DataGridTextColumn Header="失败原因" Binding="{Binding FailReason}" Width="200"/>
                             <DataGridTextColumn Header="操作员" Binding="{Binding Operator}" Width="80"/>
                             <DataGridTextColumn Header="测试时长(s)" Binding="{Binding TestDuration, StringFormat=F1}" Width="100"/>

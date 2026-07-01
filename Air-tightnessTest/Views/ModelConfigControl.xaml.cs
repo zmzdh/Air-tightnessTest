@@ -1,4 +1,4 @@
-﻿// UserControls/ModelConfigControl.xaml.cs
+// UserControls/ModelConfigControl.xaml.cs
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -80,7 +80,6 @@ namespace LumbarMassageTest.UserControls
             UpdateColumns(MessageKeyTestGrid);
             UpdateColumns(LumbarConfigGrid);
             UpdateColumns(ManualControlGrid);
-            MassageView?.ApplyChannelColumnVisibility(channelCount);
         }
 
         private void InitializeMessageKeyTriggerModeColumn()
@@ -434,20 +433,10 @@ namespace LumbarMassageTest.UserControls
         private static readonly ManualControlDefinition[] ManualControlDefinitions =
         {
             new(ManualControlKey.StopButton, "停止按钮", "1x", ModbusBitType.DiscreteInput),
-            new(ManualControlKey.FullTestStart, "全测启动", "1x", ModbusBitType.DiscreteInput),
-            new(ManualControlKey.MassageStart, "按摩启动", "1x", ModbusBitType.DiscreteInput),
-            new(ManualControlKey.SideWingStart, "侧翼启动", "1x", ModbusBitType.DiscreteInput),
-            new(ManualControlKey.PowerOff, "电源关闭", "0x", ModbusBitType.Coil),
-            new(ManualControlKey.ClampCylinder, "夹紧气缸", "0x", ModbusBitType.Coil),
-            new(ManualControlKey.SpareCylinder, "备用气缸", "0x", ModbusBitType.Coil),
-                        new(ManualControlKey.DriverSwitch, "主副驾切换", "0x", ModbusBitType.Coil),
-                        new(ManualControlKey.MassageKey, "按摩开关", "0x", ModbusBitType.Coil),
-                        new(ManualControlKey.FullTestLight, "全测按钮灯", "0x", ModbusBitType.Coil),
-                        new(ManualControlKey.MassageLight, "按摩按钮灯", "0x", ModbusBitType.Coil),
-                        new(ManualControlKey.SideWingLight, "侧翼按钮灯", "0x", ModbusBitType.Coil),
-                        new(ManualControlKey.TestOkLight, "测试OK灯", "0x", ModbusBitType.Coil),
-                        new(ManualControlKey.TestNgLight, "测试NG灯", "0x", ModbusBitType.Coil),
             new(ManualControlKey.AirLeakStartButton, "气密启动按钮", "1x", ModbusBitType.DiscreteInput),
+            new(ManualControlKey.FullTestLight, "运行指示灯", "0x", ModbusBitType.Coil),
+            new(ManualControlKey.TestOkLight, "测试OK灯", "0x", ModbusBitType.Coil),
+            new(ManualControlKey.TestNgLight, "测试NG灯", "0x", ModbusBitType.Coil),
             new(ManualControlKey.HighPressureInletValve, "高压进气阀", "0x", ModbusBitType.Coil),
             new(ManualControlKey.HighPressureExhaustValve, "高压排气阀", "0x", ModbusBitType.Coil),
             new(ManualControlKey.LowPressureInletValve, "低压进气阀", "0x", ModbusBitType.Coil),
@@ -579,17 +568,8 @@ namespace LumbarMassageTest.UserControls
             _lumbarActions = new ObservableCollection<LumbarActionEntry>(
                 MergeLumbarActions(ch1.LumbarTestConfigs, ch2.LumbarTestConfigs, ch3.LumbarTestConfigs, ch4.LumbarTestConfigs));
             LumbarConfigGrid.ItemsSource = _lumbarActions;
-
-            _massageActions = new ObservableCollection<MassageActionEntry>(
-                MergeMassageActions(ch1.MassageConfigs, ch2.MassageConfigs, ch3.MassageConfigs, ch4.MassageConfigs));
-            MassageView.ItemsSource = _massageActions;
-
-            _massageSettings = CloneMassageSettings(ch1.MassageTestSettings);
-            if (ch1.MassageTestSettings == null && ch2.MassageTestSettings != null)
-            {
-                _massageSettings = CloneMassageSettings(ch2.MassageTestSettings);
-            }
-            MassageView.Settings = _massageSettings;
+            _massageActions = new ObservableCollection<MassageActionEntry>();
+            _massageSettings = new MassageTestSettings();
 
             EnsureManualControlEntries();
             LoadManualControlConfig(ch1, 1);
@@ -909,7 +889,6 @@ namespace LumbarMassageTest.UserControls
         private void CommitAllDataGridEdits()
         {
             CommitDataGridEdit(LumbarConfigGrid);
-            CommitDataGridEdit(MassageView?.ConfigGrid);
             CommitDataGridEdit(MessageKeyTestGrid);
             CommitDataGridEdit(ManualControlGrid);
         }
@@ -1490,10 +1469,8 @@ namespace LumbarMassageTest.UserControls
             _massageActions = new ObservableCollection<MassageActionEntry>();
             _messageKeyTests = new ObservableCollection<MessageKeyTestEntry>();
             LumbarConfigGrid.ItemsSource = _lumbarActions;
-            MassageView.ItemsSource = _massageActions;
             MessageKeyTestGrid.ItemsSource = _messageKeyTests;
             _massageSettings = new MassageTestSettings();
-            MassageView.Settings = _massageSettings;
 
             _messageConfig = new MessageConfig();
             UpdateAllMessagePreviews();
@@ -1591,13 +1568,6 @@ namespace LumbarMassageTest.UserControls
             });
         }
 
-        private void BtnRemoveMassage_Click(object sender, RoutedEventArgs e)
-        {
-            if (MassageView?.SelectedMassageConfig is MassageActionEntry selected && _massageActions != null)
-            {
-                _massageActions.Remove(selected);
-            }
-        }
 
         private void BtnAddMessageKeyTest_Click(object sender, RoutedEventArgs e)
         {
