@@ -113,7 +113,7 @@ namespace LumbarMassageTest.Services
             }
             catch (Exception ex)
             {
-                _logService.LogError("鍔犺浇浜у搧鍨嬪彿澶辫触", ex);
+                _logService.LogError("加载产品型号失败", ex);
             }
 
             if (models.Count == 0)
@@ -139,7 +139,7 @@ namespace LumbarMassageTest.Services
             }
             catch (Exception ex)
             {
-                _logService.LogError("淇濆瓨浜у搧鍨嬪彿澶辫触", ex);
+                _logService.LogError("保存产品型号失败", ex);
                 return false;
             }
         }
@@ -170,7 +170,7 @@ namespace LumbarMassageTest.Services
             }
             catch (Exception ex)
             {
-                _logService.LogError("鍒犻櫎浜у搧鍨嬪彿澶辫触", ex);
+                _logService.LogError("删除产品型号失败", ex);
                 return false;
             }
         }
@@ -191,7 +191,7 @@ namespace LumbarMassageTest.Services
             }
             catch (Exception ex)
             {
-                _logService.LogError("鍔犺浇搴旂敤閰嶇疆澶辫触", ex);
+                _logService.LogError("加载应用配置失败", ex);
             }
 
             var defaultConfig = new AppConfig
@@ -238,7 +238,7 @@ namespace LumbarMassageTest.Services
             }
             catch (Exception ex)
             {
-                _logService.LogError("淇濆瓨搴旂敤閰嶇疆澶辫触", ex);
+                _logService.LogError("保存应用配置失败", ex);
                 return false;
             }
         }
@@ -248,8 +248,8 @@ namespace LumbarMassageTest.Services
             var currentSleepConfig = BuildDefaultCurrentSleepConfig();
             var model = new ProductModel
             {
-                ModelName = "榛樿鍨嬪彿",
-                Description = "榛樿鑵版墭鎸夋懇浜у搧",
+                ModelName = "默认型号",
+                Description = "默认腰托按摩产品",
                 ImagePath = string.Empty,
                 CurrentSleepConfig = currentSleepConfig,
                 ProcessConfig = new TestProcessConfig
@@ -268,10 +268,10 @@ namespace LumbarMassageTest.Services
                 }
             };
 
-            model.Channel1Config = BuildDefaultChannelConfig("閫氶亾1", currentSleepConfig);
-            model.Channel2Config = DeepCopyChannelConfig(model.Channel1Config, "閫氶亾2");
-            model.Channel3Config = DeepCopyChannelConfig(model.Channel1Config, "閫氶亾3");
-            model.Channel4Config = DeepCopyChannelConfig(model.Channel1Config, "閫氶亾4");
+            model.Channel1Config = BuildDefaultChannelConfig("通道1", currentSleepConfig);
+            model.Channel2Config = DeepCopyChannelConfig(model.Channel1Config, "通道2");
+            model.Channel3Config = DeepCopyChannelConfig(model.Channel1Config, "通道3");
+            model.Channel4Config = DeepCopyChannelConfig(model.Channel1Config, "通道4");
 
             return model;
         }

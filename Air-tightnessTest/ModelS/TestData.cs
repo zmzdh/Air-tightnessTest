@@ -121,10 +121,10 @@ namespace LumbarMassageTest.Models
 
     public class ChannelData
     {
-        // 鎸夋懇鐐?(32涓?
+        // 按摩点(32个)
         public bool[] MassagePoints { get; set; } = new bool[32];
 
-        // 鎺у埗鎸夐挳
+        // 控制按钮
         public bool StopButton { get; set; }
         public bool FullTestStart { get; set; }
         public bool MassageStart { get; set; }
@@ -134,7 +134,7 @@ namespace LumbarMassageTest.Models
         // 澶囩敤鐐?
         public bool[] SparePoints { get; set; } = new bool[4];
 
-        // 绯荤粺鎺у埗
+        // 系统控制
         public bool PowerOff { get; set; }
         public bool CylinderOpen { get; set; }
         public bool CylinderClose { get; set; }
@@ -147,17 +147,17 @@ namespace LumbarMassageTest.Models
         public bool TestOKLight { get; set; }
         public bool TestNGLight { get; set; }
 
-        // 姘旇鎺у埗
+        // 气袋控制
         public bool UpInflateDownDeflate { get; set; }
         public bool DownInflateUpDeflate { get; set; }
         public bool BothInflate { get; set; }
         public bool BothDeflate { get; set; }
 
-        // 閫氳鎺у埗
+        // 通讯控制
         public bool CommSingleSend { get; set; }
         public bool CommContinuousSend { get; set; }
 
-        // 杈撳嚭澶囩敤
+        // 输出备用
         public bool OutputSpare1 { get; set; }
         public bool OutputSpare2 { get; set; }
 
@@ -167,7 +167,7 @@ namespace LumbarMassageTest.Models
         public bool LowPressureInletValve { get; set; }
         public bool LowPressureExhaustValve { get; set; }
 
-        // 鏁版嵁瀵勫瓨鍣?
+        // 数据寄存器
         public int HeightRawValue { get; set; }
         public int CurrentRawValue { get; set; }
         public double HeightValue => HeightRawValue / 100.0;
@@ -345,7 +345,7 @@ namespace LumbarMassageTest.Models
         }
     }
 
-    // PLC鍦板潃鏄犲皠鍜岃浆鎹㈢被
+    // PLC地址映射和转换类
     public static class PLCAddressMapper
     {
         private const int BitsPerChannel = 64;
@@ -396,7 +396,7 @@ namespace LumbarMassageTest.Models
             };
         }
 
-        // 娣诲姞缂哄け鐨勬柟娉曪細MapMRegistersToStructuredData
+        // 添加缺失的方法：MapMRegistersToStructuredData
         public static void MapMRegistersToStructuredData(bool[] mRegisters, PLCData plcData)
         {
             if (mRegisters == null)
@@ -603,7 +603,7 @@ namespace LumbarMassageTest.Models
 
             int maxAddress = map.GetAllBitAddresses().Max();
             if (mRegisters.Length <= maxAddress)
-                throw new ArgumentException("mRegisters鏁扮粍闀垮害涓嶈冻");
+                throw new ArgumentException("mRegisters数组长度不足");
 
             for (int i = 0; i < map.MassagePoints.Length && i < channel.MassagePoints.Length; i++)
             {
@@ -664,7 +664,7 @@ namespace LumbarMassageTest.Models
             foreach (int address in map.GetAllBitAddresses())
             {
                 if (address >= mRegisters.Length)
-                    throw new ArgumentException("mRegisters鏁扮粍闀垮害涓嶈冻");
+                    throw new ArgumentException("mRegisters数组长度不足");
             }
 
             for (int i = 0; i < map.MassagePoints.Length && i < channel.MassagePoints.Length; i++)
@@ -705,7 +705,7 @@ namespace LumbarMassageTest.Models
             mRegisters[map.OutputSpare2] = channel.OutputSpare2;
         }
 
-        // 娣诲姞缂哄け鐨勬柟娉曪細MapDRegistersToStructuredData
+        // 添加缺失的方法：MapDRegistersToStructuredData
         public static void MapDRegistersToStructuredData(ushort[] dRegisters, PLCData plcData)
         {
             if (dRegisters == null)
@@ -848,7 +848,7 @@ namespace LumbarMassageTest.Models
             }
         }
 
-        // 娣诲姞缂哄け鐨勬柟娉曪細TryUpdateChannelBit
+        // 添加缺失的方法：TryUpdateChannelBit
         public static bool TryUpdateChannelBit(ChannelData channel, ChannelAddressMap map, int address, bool value)
         {
             if (channel == null)
@@ -901,7 +901,7 @@ namespace LumbarMassageTest.Models
             return false;
         }
 
-        // 娣诲姞缂哄け鐨勬柟娉曪細TryUpdateChannelWord
+        // 添加缺失的方法：TryUpdateChannelWord
         public static bool TryUpdateChannelWord(ChannelData channel, ChannelAddressMap map, int address, ushort value)
         {
             if (channel == null)
@@ -1065,11 +1065,11 @@ namespace LumbarMassageTest.Models
         {
             return action switch
             {
-                LumbarActionType.UpInflateDownDeflate => "涓婂厖涓嬫斁",
-                LumbarActionType.DownInflateUpDeflate => "涓嬪厖涓婃斁",
-                LumbarActionType.SimultaneousInflate => "鍚屾椂鍏呮皵",
-                LumbarActionType.SimultaneousDeflate => "鍚屾椂鏀炬皵",
-                LumbarActionType.FrameHeaderSwitch => "甯уご鍒囨崲",
+                LumbarActionType.UpInflateDownDeflate => "上充下放",
+                LumbarActionType.DownInflateUpDeflate => "下充上放",
+                LumbarActionType.SimultaneousInflate => "同时充气",
+                LumbarActionType.SimultaneousDeflate => "同时放气",
+                LumbarActionType.FrameHeaderSwitch => "帧头切换",
                 _ => action.ToString()
             };
         }
@@ -1078,8 +1078,8 @@ namespace LumbarMassageTest.Models
         {
             string displayName = action.ToDisplayName();
             return string.IsNullOrWhiteSpace(displayName)
-                ? $"鑵版墭鍔ㄤ綔{order}"
-                : $"鑵版墭鍔ㄤ綔{order}({displayName})";
+                ? $"腰托动作{order}"
+                : $"腰托动作{order}({displayName})";
         }
     }
 
@@ -1088,10 +1088,10 @@ namespace LumbarMassageTest.Models
         private string _modelName = string.Empty;
         private string _description = string.Empty;
         private string _imagePath = string.Empty;
-        private ChannelConfig _channel1Config = new() { ChannelName = "閫氶亾1" };
-        private ChannelConfig _channel2Config = new() { ChannelName = "閫氶亾2" };
-        private ChannelConfig _channel3Config = new() { ChannelName = "閫氶亾3" };
-        private ChannelConfig _channel4Config = new() { ChannelName = "閫氶亾4" };
+        private ChannelConfig _channel1Config = new() { ChannelName = "通道1" };
+        private ChannelConfig _channel2Config = new() { ChannelName = "通道2" };
+        private ChannelConfig _channel3Config = new() { ChannelName = "通道3" };
+        private ChannelConfig _channel4Config = new() { ChannelName = "通道4" };
         private CurrentSleepConfig _currentSleepConfig = new();
         private TestProcessConfig _processConfig = new();
 
@@ -1249,26 +1249,26 @@ namespace LumbarMassageTest.Models
     {
         public int Point { get; set; }
 
-#pragma warning disable CS0618 // 浣跨敤鍏煎鏃х増鏈厤缃殑灞炴€?
-        [Obsolete("鎸夋懇鍔ㄤ綔椤哄簭宸插純鐢紝浣跨敤鐐逛綅瀹氫箟鎵ц椤哄簭銆?")]
+#pragma warning disable CS0618 // 使用兼容旧版本配置的属性
+        [Obsolete("按摩动作顺序已弃用，使用点位定义执行顺序。")]
         public int Order { get; set; }
 
-        [Obsolete("鍗曞姩浣滄渶灏忔椂闀垮凡寮冪敤锛屾敼涓哄湪 MassageTestSettings 涓厤缃叡浜弬鏁般€?")]
+        [Obsolete("单动作最小时长已弃用，改为在 MassageTestSettings 中配置共享参数。")]
         public int MinDuration { get; set; } = 1000;
 
-        [Obsolete("鍗曞姩浣滄渶澶ф椂闀垮凡寮冪敤锛屾敼涓哄湪 MassageTestSettings 涓厤缃叡浜弬鏁般€?")]
+        [Obsolete("单动作最大时长已弃用，改为在 MassageTestSettings 中配置共享参数。")]
         public int MaxDuration { get; set; } = 5000;
 
-        [Obsolete("宄板€肩數娴佷笅闄愬凡杩佺Щ鍒板叡浜弬鏁伴厤缃€?")]
+        [Obsolete("峰值电流下限已迁移到共享参数配置。")]
         public double PeakCurrentMin { get; set; } = 100;
 
-        [Obsolete("宄板€肩數娴佷笂闄愬凡杩佺Щ鍒板叡浜弬鏁伴厤缃€?")]
+        [Obsolete("峰值电流上限已迁移到共享参数配置。")]
         public double PeakCurrentMax { get; set; } = 2000;
 
-        [Obsolete("骞冲潎鐢垫祦涓嬮檺宸茶縼绉诲埌鍏变韩鍙傛暟閰嶇疆銆?")]
+        [Obsolete("平均电流下限已迁移到共享参数配置。")]
         public double AverageCurrentMin { get; set; } = 100;
 
-        [Obsolete("骞冲潎鐢垫祦涓婇檺宸茶縼绉诲埌鍏变韩鍙傛暟閰嶇疆銆?")]
+        [Obsolete("平均电流上限已迁移到共享参数配置。")]
         public double AverageCurrentMax { get; set; } = 1500;
 #pragma warning restore CS0618
 
@@ -1437,7 +1437,7 @@ namespace LumbarMassageTest.Models
 
     public class ChannelConfig
     {
-        public string ChannelName { get; set; } = "閫氶亾1";
+        public string ChannelName { get; set; } = "通道1";
 
         public double StaticCurrentMin { get; set; } = 0;
         public double StaticCurrentMax { get; set; } = 100;

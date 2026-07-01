@@ -41,7 +41,7 @@ namespace LumbarMassageTest.UserControls
         private int _failCount;
         private int _targetProduction;
 
-        private const string DefaultStatusMessage = "绛夊緟寮€濮嬫祴璇?";
+        private const string DefaultStatusMessage = "等待开始测试";
 
         private readonly Dictionary<int, ObservableCollection<TestStageItem>> _channelStages = new();
         private readonly Dictionary<int, bool> _channelRunning = new() { { 1, false }, { 2, false }, { 3, false }, { 4, false } };
@@ -199,9 +199,9 @@ namespace LumbarMassageTest.UserControls
 
         private static string GetChannelDisplayName(int channel) => channel switch
         {
-            1 => "閫氶亾1",
-            2 => "閫氶亾2",
-            _ => $"閫氶亾{channel}"
+            1 => "通道1",
+            2 => "通道2",
+            _ => $"通道{channel}"
         };
 
         private void SetChannelStatusMessage(int? channel, string message)
@@ -241,7 +241,7 @@ namespace LumbarMassageTest.UserControls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"鍔犺浇搴旂敤閰嶇疆澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"加载应用配置失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 _appConfig = new AppConfig();
             }
 
@@ -258,7 +258,7 @@ namespace LumbarMassageTest.UserControls
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"淇濆瓨榛樿宸ュ崟澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show($"保存默认工单失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
             }
@@ -448,7 +448,7 @@ namespace LumbarMassageTest.UserControls
             catch (Exception ex)
             {
                 ImgModelPreview.Source = null;
-                SetChannelStatusMessage(null, $"鏈哄瀷鍥剧墖鍔犺浇澶辫触: {ex.Message}");
+                SetChannelStatusMessage(null, $"机型图片加载失败: {ex.Message}");
             }
         }
 
@@ -479,7 +479,7 @@ namespace LumbarMassageTest.UserControls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"鍔犺浇浜у搧鍨嬪彿澶辫触: {ex.Message}", "閿欒",
+                MessageBox.Show($"加载产品型号失败: {ex.Message}", "错误",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -807,7 +807,7 @@ namespace LumbarMassageTest.UserControls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"鍔犺浇搴旂敤閰嶇疆澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"加载应用配置失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
@@ -816,7 +816,7 @@ namespace LumbarMassageTest.UserControls
 
             if (!ValidateMesConfiguration(config, mode, out string errorMessage))
             {
-                MessageBox.Show(errorMessage, "閰嶇疆閿欒", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(errorMessage, "配置错误", MessageBoxButton.OK, MessageBoxImage.Warning);
                 UpdateMesIntegrationUI();
                 return;
             }
@@ -825,17 +825,17 @@ namespace LumbarMassageTest.UserControls
 
             if (mode == MesIntegrationMode.ModbusServer)
             {
-                UpdateMesStatusDisplay("Modbus 鐘舵€侊細鍚敤涓?..", Brushes.DarkOrange);
+                UpdateMesStatusDisplay("Modbus 状态：启用中...", Brushes.DarkOrange);
 
                 try
                 {
                     await _mesService.DisconnectAsync();
                     await _modbusService.ApplyConfigurationAsync(config);
-                    SetChannelStatusMessage(null, "Modbus 鏈嶅姟宸插惎鐢?");
+                    SetChannelStatusMessage(null, "Modbus 服务已启用");
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"鍚敤 Modbus 鏈嶅姟澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"启用 Modbus 服务失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
                 finally
                 {
@@ -845,7 +845,7 @@ namespace LumbarMassageTest.UserControls
                 return;
             }
 
-            UpdateMesStatusDisplay("MES 鐘舵€侊細鍚敤涓?..", Brushes.DarkOrange);
+            UpdateMesStatusDisplay("MES 状态：启用中...", Brushes.DarkOrange);
 
             try
             {
@@ -853,7 +853,7 @@ namespace LumbarMassageTest.UserControls
                 bool connected = await _mesService.ConnectAsync(config);
                 if (connected)
                 {
-                    SetChannelStatusMessage(null, "MES 绯荤粺宸插惎鐢?");
+                    SetChannelStatusMessage(null, "MES 系统已启用");
                 }
                 else
                 {
@@ -866,7 +866,7 @@ namespace LumbarMassageTest.UserControls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"鍚敤 MES 绯荤粺澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"启用 MES 系统失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -882,16 +882,16 @@ namespace LumbarMassageTest.UserControls
 
             if (mode == MesIntegrationMode.ModbusServer)
             {
-                UpdateMesStatusDisplay("Modbus 鐘舵€侊細鍋滅敤涓?..", Brushes.DarkOrange);
+                UpdateMesStatusDisplay("Modbus 状态：停用中...", Brushes.DarkOrange);
 
                 try
                 {
                     await _modbusService.StopServerAsync();
-                    SetChannelStatusMessage(null, "Modbus 鏈嶅姟宸插仠鐢?");
+                    SetChannelStatusMessage(null, "Modbus 服务已停用");
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"鍋滅敤 Modbus 鏈嶅姟澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"停用 Modbus 服务失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
                 finally
                 {
@@ -901,16 +901,16 @@ namespace LumbarMassageTest.UserControls
                 return;
             }
 
-            UpdateMesStatusDisplay("MES 鐘舵€侊細鍋滅敤涓?..", Brushes.DarkOrange);
+            UpdateMesStatusDisplay("MES 状态：停用中...", Brushes.DarkOrange);
 
             try
             {
                 await _mesService.DisconnectAsync();
-                SetChannelStatusMessage(null, "MES 绯荤粺宸插仠鐢?");
+                SetChannelStatusMessage(null, "MES 系统已停用");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"鍋滅敤 MES 绯荤粺澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"停用 MES 系统失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -961,7 +961,7 @@ namespace LumbarMassageTest.UserControls
         {
             if (config == null)
             {
-                errorMessage = "鏈壘鍒?MES 閰嶇疆锛岃鍓嶅線绯荤粺璁剧疆瀹屽杽鐩稿叧鍙傛暟銆?";
+                errorMessage = "未找到 MES 配置，请前往系统设置完善相关参数。";
                 return false;
             }
 
@@ -969,7 +969,7 @@ namespace LumbarMassageTest.UserControls
             {
                 if (config.ModbusServerPort <= 0 || config.ModbusServerPort > 65535)
                 {
-                    errorMessage = "Modbus 绔彛鍙烽厤缃棤鏁堬紝璇峰墠寰€绯荤粺璁剧疆銆?";
+                    errorMessage = "Modbus 端口号配置无效，请前往系统设置。";
                     return false;
                 }
 
@@ -979,13 +979,13 @@ namespace LumbarMassageTest.UserControls
 
             if (string.IsNullOrWhiteSpace(config.MesServerIp))
             {
-                errorMessage = "MES IP 鍦板潃鏈厤缃紝璇峰墠寰€绯荤粺璁剧疆銆?";
+                errorMessage = "MES IP 地址未配置，请前往系统设置。";
                 return false;
             }
 
             if (config.MesServerPort <= 0 || config.MesServerPort > 65535)
             {
-                errorMessage = "MES 绔彛鍙烽厤缃棤鏁堬紝璇峰墠寰€绯荤粺璁剧疆銆?";
+                errorMessage = "MES 端口号配置无效，请前往系统设置。";
                 return false;
             }
 
@@ -1041,7 +1041,7 @@ namespace LumbarMassageTest.UserControls
 
             if (_selectedModel == null)
             {
-                MessageBox.Show("璇烽€夋嫨浜у搧鍨嬪彿", "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("请选择产品型号", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -1054,8 +1054,8 @@ namespace LumbarMassageTest.UserControls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"鏉＄爜閲嶅妫€鏌ュけ璐? {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
-                SetChannelStatusMessage(null, "鏉＄爜閲嶅妫€鏌ュけ璐ワ紝璇风◢鍚庨噸璇?");
+                MessageBox.Show($"条码重复检查失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                SetChannelStatusMessage(null, "条码重复检查失败，请稍后重试");
                 return;
             }
 
@@ -1066,21 +1066,21 @@ namespace LumbarMassageTest.UserControls
                     _duplicateBarcodeBlocked = false;
                     UpdateAllChannelButtons();
                     SetChannelStatusMessage(null,
-                        $"鏉＄爜{productCode}宸叉湁{duplicateCount}鏉¤褰曪紝宸茶嚜鍔ㄥ噯澶囦笅涓€娆℃祴璇?");
+                        $"条码{productCode}已有{duplicateCount}条记录，已自动准备下一次测试");
                 }
                 else
                 {
                     _duplicateBarcodeBlocked = true;
                     UpdateAllChannelButtons();
                     TxtProductCode.Focus();
-                    SetChannelStatusMessage(null, $"鏉＄爜{productCode}閲嶅锛屾湭鍕鹃€夆€滈噸澶嶆壂鐮佽嚜鍔ㄧ户缁€濓紝宸茬姝㈠惎鍔ㄦ祴璇?");
+                    SetChannelStatusMessage(null, $"条码{productCode}重复，未勾选“重复扫码自动继续”，已禁止启动测试");
                 }
             }
             else
             {
                 _duplicateBarcodeBlocked = false;
                 UpdateAllChannelButtons();
-                SetChannelStatusMessage(null, "浜у搧宸叉壂鐮侊紝鍙互寮€濮嬫祴璇?");
+                SetChannelStatusMessage(null, "产品已扫码，可以开始测试");
             }
         }
 
@@ -1128,7 +1128,7 @@ namespace LumbarMassageTest.UserControls
 
             if (_selectedModel == null)
             {
-                ShowValidationMessage("璇烽€夋嫨浜у搧鍨嬪彿", triggeredByPlc, channel);
+                ShowValidationMessage("请选择产品型号", triggeredByPlc, channel);
                 return false;
             }
 
@@ -1156,7 +1156,7 @@ namespace LumbarMassageTest.UserControls
 
             if ((_selectedModel.ProcessConfig?.EnableBarcodeCheck ?? false) && string.IsNullOrEmpty(barcode))
             {
-                ShowValidationMessage("璇峰厛鎵弿浜у搧鏉＄爜", triggeredByPlc, channel);
+                ShowValidationMessage("请先扫描产品条码", triggeredByPlc, channel);
                 if (!triggeredByPlc)
                 {
                     TxtProductCode.Focus();
@@ -1166,7 +1166,7 @@ namespace LumbarMassageTest.UserControls
 
             if (_duplicateBarcodeBlocked && ChkContinueDuplicate.IsChecked != true)
             {
-                ShowValidationMessage("閲嶅鏉＄爜涓旀湭鍚敤鑷姩缁х画锛屽凡绂佹鍚姩娴嬭瘯", triggeredByPlc, channel);
+                ShowValidationMessage("重复条码且未启用自动继续，已禁止启动测试", triggeredByPlc, channel);
                 return false;
             }
 
@@ -1224,11 +1224,11 @@ namespace LumbarMassageTest.UserControls
             {
                 if (triggeredByPlc)
                 {
-                    SetChannelStatusMessage(channel, $"娴嬭瘯鍚姩澶辫触: {ex.Message}");
+                    SetChannelStatusMessage(channel, $"测试启动失败: {ex.Message}");
                 }
                 else
                 {
-                    MessageBox.Show($"娴嬭瘯鍚姩澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"测试启动失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
                 _channelRunning[channel] = false;
                 UpdateChannelButtons(channel);
@@ -1263,13 +1263,13 @@ namespace LumbarMassageTest.UserControls
 
         public Task<bool> StartChannelFromPlcAsync(int channel)
         {
-            SetChannelStatusMessage(channel, $"PLC瑙﹀彂閫氶亾{channel}娴嬭瘯鍚姩");
+            SetChannelStatusMessage(channel, $"PLC触发通道{channel}测试启动");
             return StartChannelAsync(channel, true);
         }
 
         public void StopChannelFromPlc(int channel)
         {
-            StopChannel(channel, false, $"PLC瑙﹀彂閫氶亾{channel}鍋滄娴嬭瘯");
+            StopChannel(channel, false, $"PLC触发通道{channel}停止测试");
         }
 
         public bool IsChannelRunning(int channel)
@@ -1285,7 +1285,7 @@ namespace LumbarMassageTest.UserControls
             }
             else
             {
-                MessageBox.Show(message, "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(message, "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -1326,7 +1326,7 @@ namespace LumbarMassageTest.UserControls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"鍒锋柊鍨嬪彿閰嶇疆澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"刷新型号配置失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1360,7 +1360,7 @@ namespace LumbarMassageTest.UserControls
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"鍔犺浇鎶ユ枃閰嶇疆澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"加载报文配置失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
 
@@ -1413,10 +1413,10 @@ namespace LumbarMassageTest.UserControls
             }
 
             model.ProcessConfig ??= new TestProcessConfig();
-            model.Channel1Config ??= new ChannelConfig { ChannelName = "閫氶亾1" };
-            model.Channel2Config ??= new ChannelConfig { ChannelName = "閫氶亾2" };
-            model.Channel3Config ??= new ChannelConfig { ChannelName = "閫氶亾3" };
-            model.Channel4Config ??= new ChannelConfig { ChannelName = "閫氶亾4" };
+            model.Channel1Config ??= new ChannelConfig { ChannelName = "通道1" };
+            model.Channel2Config ??= new ChannelConfig { ChannelName = "通道2" };
+            model.Channel3Config ??= new ChannelConfig { ChannelName = "通道3" };
+            model.Channel4Config ??= new ChannelConfig { ChannelName = "通道4" };
 
             model.Channel1Config.MessageConfig ??= new MessageConfig();
             model.Channel2Config.MessageConfig ??= new MessageConfig();
@@ -1519,7 +1519,7 @@ namespace LumbarMassageTest.UserControls
 
             if (requireConfirmation)
             {
-                var result = MessageBox.Show($"纭畾瑕佸仠姝㈤€氶亾{channel}娴嬭瘯鍚楋紵", "纭", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                var result = MessageBox.Show($"确定要停止通道{channel}测试吗？", "确认", MessageBoxButton.YesNo, MessageBoxImage.Question);
                 if (result != MessageBoxResult.Yes)
                 {
                     return;
@@ -1529,7 +1529,7 @@ namespace LumbarMassageTest.UserControls
             _testService.StopTest(channel);
             _channelRunning[channel] = false;
             UpdateChannelButtons(channel);
-            SetChannelStatusMessage(channel, messageOverride ?? $"閫氶亾{channel}娴嬭瘯宸插仠姝?");
+            SetChannelStatusMessage(channel, messageOverride ?? $"通道{channel}测试已停止");
             _channelStartTimes.Remove(channel);
             UpdateChannelInfoDisplay(channel);
             StopElapsedTimerIfNeeded();
@@ -1602,7 +1602,7 @@ namespace LumbarMassageTest.UserControls
             bool isAdmin = string.Equals(_currentUser.Role, "Admin", StringComparison.OrdinalIgnoreCase);
             TxtTargetProduction.IsEnabled = isAdmin;
             TxtTargetProduction.IsReadOnly = !isAdmin;
-            TxtTargetProduction.ToolTip = isAdmin ? null : "浠呯鐞嗗憳鍙紪杈戠洰鏍囦骇閲?";
+            TxtTargetProduction.ToolTip = isAdmin ? null : "仅管理员可编辑目标产量";
         }
 
         private void UpdateTargetProductionText()
@@ -1761,12 +1761,12 @@ namespace LumbarMassageTest.UserControls
 
             if (!_channelStartTimes.TryGetValue(channel, out var startTime))
             {
-                widgets.ElapsedText.Text = "褰撳墠娴嬭瘯宸茶繘琛?0鍒?0绉?";
+                widgets.ElapsedText.Text = "当前测试已进行 0分00秒";
                 return;
             }
 
             var elapsed = DateTime.Now - startTime;
-            widgets.ElapsedText.Text = "褰撳墠娴嬭瘯宸茶繘琛?{elapsed.Minutes}鍒唟elapsed.Seconds:00}绉?";
+            widgets.ElapsedText.Text = $"当前测试已进行 {elapsed.Minutes}分{elapsed.Seconds:00}秒";
         }
 
         private void StartElapsedTimerIfNeeded()
@@ -1959,7 +1959,7 @@ namespace LumbarMassageTest.UserControls
             }
             else if (record.Result == TestResult.Aborted)
             {
-                SetBannerState(banner, textBlock, "涓", Colors.DarkOrange);
+                SetBannerState(banner, textBlock, "中止", Colors.DarkOrange);
             }
             else
             {
@@ -1977,7 +1977,7 @@ namespace LumbarMassageTest.UserControls
                         SetBannerState(banner, textBlock, "OK", Colors.ForestGreen);
                         return;
                     case TestResult.Aborted:
-                        SetBannerState(banner, textBlock, "涓", Colors.DarkOrange);
+                        SetBannerState(banner, textBlock, "中止", Colors.DarkOrange);
                         return;
                     case TestResult.Fail:
                         SetBannerState(banner, textBlock, "NG", Colors.Firebrick);
@@ -1985,7 +1985,7 @@ namespace LumbarMassageTest.UserControls
                 }
             }
 
-            SetBannerState(banner, textBlock, "绛夊緟娴嬭瘯", Colors.SlateGray);
+            SetBannerState(banner, textBlock, "等待测试", Colors.SlateGray);
         }
 
         private (Border Banner, TextBlock TextBlock) GetChannelBannerElements(int channel)
@@ -2031,11 +2031,11 @@ namespace LumbarMassageTest.UserControls
 
             AddResultItem(panel, "工单号", record.WorkOrder);
             AddResultItem(panel, "产品码", GetMaskedProductCode(record.ProductCode));
-            AddResultItem(panel, "娴嬭瘯搴忓彿", record.TestCount.ToString());
+            AddResultItem(panel, "测试序号", record.TestCount.ToString());
 
             if (record.SleepCurrent.HasValue)
             {
-                AddResultItem(panel, "浼戠湢鐢垫祦", $"{record.SleepCurrent.Value:F2} mA");
+                AddResultItem(panel, "休眠电流", $"{record.SleepCurrent.Value:F2} mA");
             }
 
             if (record.StaticCurrent.HasValue)
@@ -2045,7 +2045,7 @@ namespace LumbarMassageTest.UserControls
 
             if (!string.IsNullOrEmpty(record.FailReason))
             {
-                AddResultItem(panel, "澶辫触鍘熷洜", record.FailReason, Brushes.Firebrick);
+                AddResultItem(panel, "失败原因", record.FailReason, Brushes.Firebrick);
             }
 
             if (record.LumbarResults.Any())
@@ -2057,11 +2057,11 @@ namespace LumbarMassageTest.UserControls
                     string actualTime = r.ActualTime.HasValue ? $"{r.ActualTime.Value}ms" : "-";
                     string actionLabel = r.Action.ToDisplayName();
                     string orderText = string.IsNullOrWhiteSpace(actionLabel)
-                        ? $"鍔ㄤ綔{r.Order}"
-                        : $"鍔ㄤ綔{r.Order}({actionLabel})";
+                        ? $"动作{r.Order}"
+                        : $"动作{r.Order}({actionLabel})";
                     return $"{orderText}({target}->{actualHeight}/{actualTime}):{(r.Passed ? "OK" : "NG")}";
                 }));
-                AddResultItem(panel, "鑵版墭缁撴灉", summary);
+                AddResultItem(panel, "腰托结果", summary);
             }
 
             if (record.MassageResults.Any())
@@ -2077,19 +2077,19 @@ namespace LumbarMassageTest.UserControls
                     {
                         summary += $"...等{failedResults.Count}个失败点";
                     }
-                    AddResultItem(panel, "鎸夋懇缁撴灉", summary, Brushes.Firebrick);
+                    AddResultItem(panel, "按摩结果", summary, Brushes.Firebrick);
                 }
                 else
                 {
                     var summary = string.Join("; ", record.MassageResults.Select(r => $"点{r.Point}:OK"));
-                    AddResultItem(panel, "鎸夋懇缁撴灉", summary);
+                    AddResultItem(panel, "按摩结果", summary);
                 }
             }
 
-            var stageSummary = string.Join(" 鈫?", record.StageResults
+            var stageSummary = string.Join(" ->", record.StageResults
                 .Where(s => s.Stage != TestStage.Aborted || record.Result == TestResult.Aborted)
                 .Select(s => $"{GetStageDisplayName(s.Stage)}:{GetStateDescription(s.State)}"));
-            AddResultItem(panel, "娴佺▼", stageSummary);
+            AddResultItem(panel, "流程", stageSummary);
 
             border.Child = panel;
             TestResultPanel.Children.Insert(0, border);
@@ -2140,17 +2140,17 @@ namespace LumbarMassageTest.UserControls
             return stage switch
             {
                 TestStage.Standby => "待机检查",
-                TestStage.ScanBarcode => "鎵爜",
-                TestStage.StartTest => "鍚姩娴嬭瘯",
-                TestStage.SleepTest => "浼戠湢娴嬭瘯",
+                TestStage.ScanBarcode => "扫码",
+                TestStage.StartTest => "启动测试",
+                TestStage.SleepTest => "休眠测试",
                 TestStage.StaticCurrentTest => "静态电流",
                 TestStage.StatusMessageCheck => "状态报文",
-                TestStage.LumbarTest => "鑵版墭娴嬭瘯",
-                TestStage.MassageTest => "鎸夋懇娴嬭瘯",
-                TestStage.MasterSlaveDecision => "妯″紡鍒囨崲",
-                TestStage.MasterModeMassage => "鎸夋懇2娴嬭瘯",
-                TestStage.Completed => "娴嬭瘯瀹屾垚",
-                TestStage.Aborted => "娴嬭瘯缁堟",
+                TestStage.LumbarTest => "腰托测试",
+                TestStage.MassageTest => "按摩测试",
+                TestStage.MasterSlaveDecision => "模式切换",
+                TestStage.MasterModeMassage => "按摩2测试",
+                TestStage.Completed => "测试完成",
+                TestStage.Aborted => "测试终止",
                 _ => stage.ToString()
             };
         }
@@ -2161,9 +2161,9 @@ namespace LumbarMassageTest.UserControls
             {
                 StepExecutionState.Pending => "待执行",
                 StepExecutionState.Running => "进行中",
-                StepExecutionState.Passed => "閫氳繃",
-                StepExecutionState.Failed => "澶辫触",
-                StepExecutionState.Skipped => "璺宠繃",
+                StepExecutionState.Passed => "通过",
+                StepExecutionState.Failed => "失败",
+                StepExecutionState.Skipped => "跳过",
                 _ => state.ToString()
             };
         }
@@ -2240,9 +2240,9 @@ namespace LumbarMassageTest.UserControls
                 {
                     StepExecutionState.Pending => "待执行",
                     StepExecutionState.Running => "进行中",
-                    StepExecutionState.Passed => "閫氳繃",
-                    StepExecutionState.Failed => "澶辫触",
-                    StepExecutionState.Skipped => "璺宠繃",
+                    StepExecutionState.Passed => "通过",
+                    StepExecutionState.Failed => "失败",
+                    StepExecutionState.Skipped => "跳过",
                     _ => State.ToString()
                 } : Message;
             }
@@ -2327,4 +2327,3 @@ namespace LumbarMassageTest.UserControls
         }
     }
 }
-

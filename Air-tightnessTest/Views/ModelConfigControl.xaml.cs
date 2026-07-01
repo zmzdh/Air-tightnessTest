@@ -37,8 +37,8 @@ namespace LumbarMassageTest.UserControls
         public List<LumbarActionOption> LumbarActionList { get; set; }
         public List<MessageKeyTriggerModeOption> MessageKeyTriggerModeOptions { get; } = new()
         {
-            new MessageKeyTriggerModeOption(MessageKeyTriggerMode.Continuous, "杩炵画"),
-            new MessageKeyTriggerModeOption(MessageKeyTriggerMode.Interval, "闂撮殧")
+            new MessageKeyTriggerModeOption(MessageKeyTriggerMode.Continuous, "连续"),
+            new MessageKeyTriggerModeOption(MessageKeyTriggerMode.Interval, "间隔")
         };
 
         public ModelConfigControl(ConfigService configService)
@@ -66,11 +66,11 @@ namespace LumbarMassageTest.UserControls
                 foreach (var column in grid.Columns)
                 {
                     string header = column.Header?.ToString() ?? string.Empty;
-                    if (header.Contains("閫氶亾3", StringComparison.Ordinal))
+                    if (header.Contains("通道3", StringComparison.Ordinal))
                     {
                         column.Visibility = showCh3 ? Visibility.Visible : Visibility.Collapsed;
                     }
-                    else if (header.Contains("閫氶亾4", StringComparison.Ordinal))
+                    else if (header.Contains("通道4", StringComparison.Ordinal))
                     {
                         column.Visibility = showCh4 ? Visibility.Visible : Visibility.Collapsed;
                     }
@@ -87,7 +87,7 @@ namespace LumbarMassageTest.UserControls
         {
             var triggerModeColumn = MessageKeyTestGrid.Columns
                 .OfType<DataGridComboBoxColumn>()
-                .FirstOrDefault(column => string.Equals(column.Header?.ToString(), "瑙﹀彂鏂瑰紡", StringComparison.Ordinal));
+                .FirstOrDefault(column => string.Equals(column.Header?.ToString(), "触发方式", StringComparison.Ordinal));
 
             if (triggerModeColumn != null)
             {
@@ -99,11 +99,11 @@ namespace LumbarMassageTest.UserControls
         {
             LumbarActionList = new List<LumbarActionOption>
             {
-                new LumbarActionOption(LumbarActionType.UpInflateDownDeflate, "涓婂厖涓嬫斁"),
-                new LumbarActionOption(LumbarActionType.DownInflateUpDeflate, "涓嬪厖涓婃斁"),
-                new LumbarActionOption(LumbarActionType.SimultaneousInflate, "鍚屾椂鍏呮皵"),
-                new LumbarActionOption(LumbarActionType.SimultaneousDeflate, "鍚屾椂鏀炬皵"),
-                new LumbarActionOption(LumbarActionType.FrameHeaderSwitch, "甯уご鍒囨崲")
+                new LumbarActionOption(LumbarActionType.UpInflateDownDeflate, "上充下放"),
+                new LumbarActionOption(LumbarActionType.DownInflateUpDeflate, "下充上放"),
+                new LumbarActionOption(LumbarActionType.SimultaneousInflate, "同时充气"),
+                new LumbarActionOption(LumbarActionType.SimultaneousDeflate, "同时放气"),
+                new LumbarActionOption(LumbarActionType.FrameHeaderSwitch, "帧头切换")
             };
         }
 
@@ -184,13 +184,13 @@ namespace LumbarMassageTest.UserControls
 
             if (invalid.Count > 0)
             {
-                string message = $"閫氶亾{channelLabel} 鑵版墭鍔ㄤ綔{order}鍖呭惈鏃犳晥瀵勫瓨鍣? {string.Join(", ", invalid)}";
+                string message = $"通道{channelLabel} 腰托动作{order}包含无效寄存器 {string.Join(", ", invalid)}";
                 if (normalized.Count > 0)
                 {
-                    message += $"锛屽凡淇濈暀鏈夋晥瀵勫瓨鍣? {string.Join(", ", normalized)}";
+                    message += $"，已保留有效寄存器 {string.Join(", ", normalized)}";
                 }
 
-                warningSink?.Invoke(message + "銆?");
+                warningSink?.Invoke(message + "。");
             }
 
             return string.Join(", ", normalized);
@@ -208,7 +208,7 @@ namespace LumbarMassageTest.UserControls
         {
             if (message == null)
             {
-                return "鏈厤缃?";
+                return "未配置";
             }
 
             var normalized = NormalizeMessageArray(message);
@@ -292,7 +292,7 @@ namespace LumbarMassageTest.UserControls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"淇濆瓨鎶ユ枃閰嶇疆鍒版暟鎹簱澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"保存报文配置到数据库失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -433,13 +433,13 @@ namespace LumbarMassageTest.UserControls
 
         private static readonly ManualControlDefinition[] ManualControlDefinitions =
         {
-            new(ManualControlKey.StopButton, "鍋滄鎸夐挳", "1x", ModbusBitType.DiscreteInput),
-            new(ManualControlKey.FullTestStart, "鍏ㄦ祴鍚姩", "1x", ModbusBitType.DiscreteInput),
-            new(ManualControlKey.MassageStart, "鎸夋懇鍚姩", "1x", ModbusBitType.DiscreteInput),
-            new(ManualControlKey.SideWingStart, "渚х考鍚姩", "1x", ModbusBitType.DiscreteInput),
-            new(ManualControlKey.PowerOff, "鐢垫簮鍏抽棴", "0x", ModbusBitType.Coil),
-            new(ManualControlKey.ClampCylinder, "澶圭揣姘旂几", "0x", ModbusBitType.Coil),
-            new(ManualControlKey.SpareCylinder, "澶囩敤姘旂几", "0x", ModbusBitType.Coil),
+            new(ManualControlKey.StopButton, "停止按钮", "1x", ModbusBitType.DiscreteInput),
+            new(ManualControlKey.FullTestStart, "全测启动", "1x", ModbusBitType.DiscreteInput),
+            new(ManualControlKey.MassageStart, "按摩启动", "1x", ModbusBitType.DiscreteInput),
+            new(ManualControlKey.SideWingStart, "侧翼启动", "1x", ModbusBitType.DiscreteInput),
+            new(ManualControlKey.PowerOff, "电源关闭", "0x", ModbusBitType.Coil),
+            new(ManualControlKey.ClampCylinder, "夹紧气缸", "0x", ModbusBitType.Coil),
+            new(ManualControlKey.SpareCylinder, "备用气缸", "0x", ModbusBitType.Coil),
                         new(ManualControlKey.DriverSwitch, "主副驾切换", "0x", ModbusBitType.Coil),
                         new(ManualControlKey.MassageKey, "按摩开关", "0x", ModbusBitType.Coil),
                         new(ManualControlKey.FullTestLight, "全测按钮灯", "0x", ModbusBitType.Coil),
@@ -468,7 +468,7 @@ namespace LumbarMassageTest.UserControls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"鍔犺浇浜у搧鍨嬪彿澶辫触: {ex.Message}", "閿欒",
+                MessageBox.Show($"加载产品型号失败: {ex.Message}", "错误",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -486,7 +486,7 @@ namespace LumbarMassageTest.UserControls
         {
             if (_currentModel == null) return;
 
-            // 鍩烘湰淇℃伅
+            // 基本信息
             TxtModelName.Text = _currentModel.ModelName;
             TxtModelDesc.Text = _currentModel.Description ?? string.Empty;
             TxtImagePath.Text = _currentModel.ImagePath ?? string.Empty;
@@ -500,7 +500,7 @@ namespace LumbarMassageTest.UserControls
                 ModelImage.Source = null;
             }
 
-            // 娴佺▼閰嶇疆
+            // 流程配置
             var process = _currentModel.ProcessConfig ?? new TestProcessConfig();
             ChkEnableBarcode.IsChecked = process.EnableBarcodeCheck;
             ChkEnableCurrentMonitor.IsChecked = process.EnableCurrentMonitoring;
@@ -517,10 +517,10 @@ namespace LumbarMassageTest.UserControls
             TxtPowerOffDuration.Text = process.ModeSwitchPowerOffDuration.ToString();
             UpdateLumbarConfigVisibility(process.EnableLumbarTest);
 
-            _currentModel.Channel1Config ??= new ChannelConfig { ChannelName = "閫氶亾1" };
-            _currentModel.Channel2Config ??= new ChannelConfig { ChannelName = "閫氶亾2" };
-            _currentModel.Channel3Config ??= new ChannelConfig { ChannelName = "閫氶亾3" };
-            _currentModel.Channel4Config ??= new ChannelConfig { ChannelName = "閫氶亾4" };
+            _currentModel.Channel1Config ??= new ChannelConfig { ChannelName = "通道1" };
+            _currentModel.Channel2Config ??= new ChannelConfig { ChannelName = "通道2" };
+            _currentModel.Channel3Config ??= new ChannelConfig { ChannelName = "通道3" };
+            _currentModel.Channel4Config ??= new ChannelConfig { ChannelName = "通道4" };
 
             var ch1 = _currentModel.Channel1Config;
             var ch2 = _currentModel.Channel2Config;
@@ -819,10 +819,10 @@ namespace LumbarMassageTest.UserControls
                 process.ModeSwitchPowerOffDuration = int.Parse(TxtPowerOffDuration.Text);
                 _currentModel.ProcessConfig = process;
 
-                _currentModel.Channel1Config ??= new ChannelConfig { ChannelName = "閫氶亾1" };
-                _currentModel.Channel2Config ??= new ChannelConfig { ChannelName = "閫氶亾2" };
-                _currentModel.Channel3Config ??= new ChannelConfig { ChannelName = "閫氶亾3" };
-                _currentModel.Channel4Config ??= new ChannelConfig { ChannelName = "閫氶亾4" };
+                _currentModel.Channel1Config ??= new ChannelConfig { ChannelName = "通道1" };
+                _currentModel.Channel2Config ??= new ChannelConfig { ChannelName = "通道2" };
+                _currentModel.Channel3Config ??= new ChannelConfig { ChannelName = "通道3" };
+                _currentModel.Channel4Config ??= new ChannelConfig { ChannelName = "通道4" };
 
                 _currentModel.CurrentSleepConfig ??= new CurrentSleepConfig();
                 _currentModel.CurrentSleepConfig.StaticCurrentMin = double.Parse(TxtSharedStaticMin.Text);
@@ -897,12 +897,12 @@ namespace LumbarMassageTest.UserControls
                 if (_lumbarAddressWarnings.Count > 0)
                 {
                     string warningMessage = string.Join(Environment.NewLine, _lumbarAddressWarnings.Distinct());
-                    MessageBox.Show(warningMessage, "鑵版墭瀵勫瓨鍣ㄥ凡鏍℃", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(warningMessage, "腰托寄存器已校正", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
             catch (Exception ex)
             {
-                throw new Exception($"淇濆瓨閰嶇疆鏁版嵁澶辫触: {ex.Message}");
+                throw new Exception($"保存配置数据失败: {ex.Message}");
             }
         }
 
@@ -1382,8 +1382,8 @@ namespace LumbarMassageTest.UserControls
         {
             var openFileDialog = new OpenFileDialog
             {
-                Title = "閫夋嫨浜у搧鍥剧墖",
-                Filter = "鍥剧墖鏂囦欢|*.jpg;*.jpeg;*.png;*.bmp;*.gif",
+                Title = "选择产品图片",
+                Filter = "图片文件|*.jpg;*.jpeg;*.png;*.bmp;*.gif",
                 Multiselect = false
             };
 
@@ -1403,10 +1403,10 @@ namespace LumbarMassageTest.UserControls
                 {
                     ModelName = dialog.ModelName,
                     Description = dialog.ModelDescription,
-                    Channel1Config = new ChannelConfig { ChannelName = "閫氶亾1" },
-                    Channel2Config = new ChannelConfig { ChannelName = "閫氶亾2" },
-                    Channel3Config = new ChannelConfig { ChannelName = "閫氶亾3" },
-                    Channel4Config = new ChannelConfig { ChannelName = "閫氶亾4" },
+                    Channel1Config = new ChannelConfig { ChannelName = "通道1" },
+                    Channel2Config = new ChannelConfig { ChannelName = "通道2" },
+                    Channel3Config = new ChannelConfig { ChannelName = "通道3" },
+                    Channel4Config = new ChannelConfig { ChannelName = "通道4" },
                     ProcessConfig = new TestProcessConfig()
                 };
 
@@ -1420,11 +1420,11 @@ namespace LumbarMassageTest.UserControls
         {
             if (_currentModel == null)
             {
-                MessageBox.Show("璇峰厛閫夋嫨瑕佸垹闄ょ殑鍨嬪彿", "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("请先选择要删除的型号", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            var result = MessageBox.Show($"纭畾瑕佸垹闄ゅ瀷鍙?'{_currentModel.ModelName}' 鍚楋紵", "纭鍒犻櫎",
+            var result = MessageBox.Show($"确定要删除型号'{_currentModel.ModelName}' 吗？", "确认删除",
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
 
             if (result == MessageBoxResult.Yes)
@@ -1449,7 +1449,7 @@ namespace LumbarMassageTest.UserControls
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"鍒犻櫎鍨嬪彿澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"删除型号失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }
@@ -1519,7 +1519,7 @@ namespace LumbarMassageTest.UserControls
         {
             if (_currentModel == null)
             {
-                MessageBox.Show("璇峰厛閫夋嫨鍨嬪彿", "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("请先选择型号", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -1528,12 +1528,12 @@ namespace LumbarMassageTest.UserControls
                 SaveCurrentModel();
                 await _configService.SaveProductModelAsync(_currentModel);
                 await SaveMessageConfigsToDatabaseAsync(_currentModel);
-                MessageBox.Show("淇濆瓨鎴愬姛", "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("保存成功", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 ModelListBox.ItemsSource = _productModels.Select(m => m.ModelName).ToList();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"淇濆瓨澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"保存失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1679,12 +1679,12 @@ namespace LumbarMassageTest.UserControls
             }
         }
 
-        // 瀵煎嚭閰嶇疆鏂囦欢
+        // 导出配置文件
         private void BtnExportConfig_Click(object sender, RoutedEventArgs e)
         {
             if (_currentModel == null)
             {
-                MessageBox.Show("璇峰厛閫夋嫨鍨嬪彿", "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("请先选择型号", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -1694,30 +1694,30 @@ namespace LumbarMassageTest.UserControls
 
                 var saveFileDialog = new SaveFileDialog
                 {
-                    Title = "瀵煎嚭閰嶇疆鏂囦欢",
-                    Filter = "JSON鏂囦欢|*.json",
-                    FileName = $"{_currentModel.ModelName}_閰嶇疆.json"
+                    Title = "导出配置文件",
+                    Filter = "JSON文件|*.json",
+                    FileName = $"{_currentModel.ModelName}_配置.json"
                 };
 
                 if (saveFileDialog.ShowDialog() == true)
                 {
                     var json = JsonConvert.SerializeObject(_currentModel, Formatting.Indented);
                     File.WriteAllText(saveFileDialog.FileName, json);
-                    MessageBox.Show("閰嶇疆鏂囦欢瀵煎嚭鎴愬姛", "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("配置文件导出成功", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"瀵煎嚭閰嶇疆鏂囦欢澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"导出配置文件失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        // 瀵煎叆閰嶇疆鏂囦欢
+        // 导入配置文件
         private async void BtnImportConfig_Click(object sender, RoutedEventArgs e)
         {
             if (_currentModel == null)
             {
-                MessageBox.Show("璇峰厛閫夋嫨鍨嬪彿", "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("请先选择型号", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -1725,8 +1725,8 @@ namespace LumbarMassageTest.UserControls
             {
                 var openFileDialog = new OpenFileDialog
                 {
-                    Title = "瀵煎叆閰嶇疆鏂囦欢",
-                    Filter = "JSON鏂囦欢|*.json"
+                    Title = "导入配置文件",
+                    Filter = "JSON文件|*.json"
                 };
 
                 if (openFileDialog.ShowDialog() == true)
@@ -1748,17 +1748,17 @@ namespace LumbarMassageTest.UserControls
 
                         ModelListBox.ItemsSource = _productModels.Select(m => m.ModelName).ToList();
                         await LoadModelConfigAsync();
-                        MessageBox.Show("閰嶇疆鏂囦欢瀵煎叆鎴愬姛", "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Information);
+                        MessageBox.Show("配置文件导入成功", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                     else
                     {
-                        MessageBox.Show("瀵煎叆鐨勯厤缃枃浠舵牸寮忎笉姝ｇ‘", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show("导入的配置文件格式不正确", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"瀵煎叆閰嶇疆鏂囦欢澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"导入配置文件失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

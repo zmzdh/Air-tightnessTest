@@ -143,7 +143,7 @@ namespace LumbarMassageTest.UserControls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"鍔犺浇閰嶇疆澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"加载配置失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 ApplyMesProtocolSelection(null);
                 ApplyMesModeSelection(MesIntegrationMode.HttpPush);
                 TxtModbusIp.Text = "0.0.0.0";
@@ -177,7 +177,7 @@ namespace LumbarMassageTest.UserControls
         {
             if (!TryBuildConfigFromInputs(out var config, out var errorMessage))
             {
-                MessageBox.Show(errorMessage, "杈撳叆閿欒", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(errorMessage, "输入错误", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -191,7 +191,7 @@ namespace LumbarMassageTest.UserControls
                 if (saved)
                 {
                     _currentConfig = config;
-                    MessageBox.Show("閰嶇疆淇濆瓨鎴愬姛", "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("配置保存成功", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
 
                     ConfigurationSaved?.Invoke(this, config);
 
@@ -207,7 +207,7 @@ namespace LumbarMassageTest.UserControls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"淇濆瓨閰嶇疆鏃跺彂鐢熼敊璇? {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"保存配置时发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -220,7 +220,7 @@ namespace LumbarMassageTest.UserControls
         {
             if (!TryBuildConfigFromInputs(out var config, out var errorMessage))
             {
-                MessageBox.Show(errorMessage, "杈撳叆閿欒", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(errorMessage, "输入错误", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -228,7 +228,7 @@ namespace LumbarMassageTest.UserControls
 
             if (config.MesIntegrationMode == MesIntegrationMode.ModbusServer)
             {
-                TxtMesStatus.Text = "Modbus 鐘舵€侊細鍚敤涓?..";
+                TxtMesStatus.Text = "Modbus 状态：启用中...";
                 TxtMesStatus.Foreground = Brushes.DarkOrange;
 
                 try
@@ -241,7 +241,7 @@ namespace LumbarMassageTest.UserControls
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"鍚敤 Modbus 鏈嶅姟澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"启用 Modbus 服务失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
                 finally
                 {
@@ -253,7 +253,7 @@ namespace LumbarMassageTest.UserControls
                 return;
             }
 
-            TxtMesStatus.Text = "MES 鐘舵€侊細鍚敤涓?..";
+            TxtMesStatus.Text = "MES 状态：启用中...";
             TxtMesStatus.Foreground = Brushes.DarkOrange;
 
             try
@@ -277,7 +277,7 @@ namespace LumbarMassageTest.UserControls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"鍚敤 MES 绯荤粺澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"启用 MES 系统失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -293,7 +293,7 @@ namespace LumbarMassageTest.UserControls
 
             if (GetSelectedMode() == MesIntegrationMode.ModbusServer)
             {
-                TxtMesStatus.Text = "Modbus 鐘舵€侊細鍋滅敤涓?..";
+                TxtMesStatus.Text = "Modbus 状态：停用中...";
                 TxtMesStatus.Foreground = Brushes.DarkOrange;
 
                 try
@@ -302,7 +302,7 @@ namespace LumbarMassageTest.UserControls
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"鍋滅敤 Modbus 鏈嶅姟澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"停用 Modbus 服务失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
                 finally
                 {
@@ -314,7 +314,7 @@ namespace LumbarMassageTest.UserControls
                 return;
             }
 
-            TxtMesStatus.Text = "MES 鐘舵€侊細鍋滅敤涓?..";
+            TxtMesStatus.Text = "MES 状态：停用中...";
             TxtMesStatus.Foreground = Brushes.DarkOrange;
 
             try
@@ -323,7 +323,7 @@ namespace LumbarMassageTest.UserControls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"鍋滅敤 MES 绯荤粺澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"停用 MES 系统失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -343,12 +343,12 @@ namespace LumbarMassageTest.UserControls
 
             if (_currentConfig == null)
             {
-                MessageBox.Show("璇峰厛淇濆瓨閰嶇疆", "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("请先保存配置", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             SetMesControlsEnabled(false);
-            TxtMesStatus.Text = "MES 鐘舵€侊細鎺ㄩ€佹ā鎷熶腑...";
+            TxtMesStatus.Text = "MES 状态：推送模拟中...";
             TxtMesStatus.Foreground = Brushes.DarkOrange;
 
             try
@@ -371,13 +371,13 @@ namespace LumbarMassageTest.UserControls
             {
                 UpdateIntegrationStatus();
             UpdateLicenseUi();
-                MessageBox.Show("妯℃嫙鎺ㄩ€佽鍙栨秷", "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("模拟推送被取消", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 UpdateIntegrationStatus();
             UpdateLicenseUi();
-                MessageBox.Show($"妯℃嫙鎺ㄩ€佸け璐? {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"模拟推送失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -444,7 +444,7 @@ namespace LumbarMassageTest.UserControls
 
             if (string.IsNullOrWhiteSpace(plcIp))
             {
-                errorMessage = "PLC IP 鍦板潃涓嶈兘涓虹┖";
+                errorMessage = "PLC IP 地址不能为空";
                 config = null!;
                 return false;
             }
@@ -462,14 +462,14 @@ namespace LumbarMassageTest.UserControls
             }
             else if (!int.TryParse(plcPortText, out plcPort) || plcPort <= 0 || plcPort > 65535)
             {
-                errorMessage = "PLC 绔彛鍙峰繀椤绘槸 1-65535 涔嬮棿鐨勬暟瀛?";
+                errorMessage = "PLC 端口号必须是 1-65535 之间的数字";
                 config = null!;
                 return false;
             }
 
             if (!TryParsePlcCount(plcInputCountText, source.PlcDiscreteInputCount, out ushort plcInputCount))
             {
-                errorMessage = "绂绘暎杈撳叆璇诲彇鏁伴噺蹇呴』鏄?1-2000 涔嬮棿鐨勬暟瀛?";
+                errorMessage = "离散输入读取数量必须是 1-2000 之间的数字";
                 config = null!;
                 return false;
             }
@@ -481,7 +481,7 @@ namespace LumbarMassageTest.UserControls
 
             if (!TryParsePlcCount(plcCoilCountText, source.PlcCoilCount, out ushort plcCoilCount))
             {
-                errorMessage = "绾垮湀璇诲彇鏁伴噺蹇呴』鏄?1-2000 涔嬮棿鐨勬暟瀛?";
+                errorMessage = "线圈读取数量必须是 1-2000 之间的数字";
                 config = null!;
                 return false;
             }
@@ -501,7 +501,7 @@ namespace LumbarMassageTest.UserControls
             {
                 if (string.IsNullOrWhiteSpace(mesIpValue))
                 {
-                    errorMessage = "MES IP 鍦板潃涓嶈兘涓虹┖";
+                    errorMessage = "MES IP 地址不能为空";
                     config = null!;
                     return false;
                 }
@@ -523,7 +523,7 @@ namespace LumbarMassageTest.UserControls
                 }
                 else if (!int.TryParse(mesPortText, out mesPortValue) || mesPortValue <= 0 || mesPortValue > 65535)
                 {
-                    errorMessage = "MES 绔彛鍙峰繀椤绘槸 1-65535 涔嬮棿鐨勬暟瀛?";
+                    errorMessage = "MES 端口号必须是 1-65535 之间的数字";
                     config = null!;
                     return false;
                 }
@@ -548,7 +548,7 @@ namespace LumbarMassageTest.UserControls
             {
                 if (!int.TryParse(modbusPortText, out modbusPortValue) || modbusPortValue <= 0 || modbusPortValue > 65535)
                 {
-                    errorMessage = "Modbus 绔彛蹇呴』鏄?1-65535 涔嬮棿鐨勬暟瀛?";
+                    errorMessage = "Modbus 端口必须是 1-65535 之间的数字";
                     config = null!;
                     return false;
                 }
@@ -831,7 +831,7 @@ namespace LumbarMassageTest.UserControls
         {
             if (!TryBuildConfigFromInputs(out var config, out var errorMessage))
             {
-                MessageBox.Show(errorMessage, "杈撳叆閿欒", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(errorMessage, "输入错误", MessageBoxButton.OK, MessageBoxImage.Warning);
                 UpdateIntegrationStatus();
             UpdateLicenseUi();
                 return false;
@@ -853,8 +853,8 @@ namespace LumbarMassageTest.UserControls
             }
             catch (Exception ex)
             {
-                LogService.Instance.LogError("鏇存柊 MES 闆嗘垚妯″紡澶辫触", ex);
-                MessageBox.Show($"鏇存柊 MES 闆嗘垚妯″紡澶辫触: {ex.Message}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                LogService.Instance.LogError("更新 MES 集成模式失败", ex);
+                MessageBox.Show($"更新 MES 集成模式失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
             finally
@@ -929,11 +929,11 @@ namespace LumbarMassageTest.UserControls
         {
             if (_licenseService.ExportRequestFile(out var error))
             {
-                MessageBox.Show("request.dat 瀵煎嚭鎴愬姛锛歿_licenseService.RequestFilePath}", "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("request.dat 导出成功：{_licenseService.RequestFilePath}", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             else
             {
-                MessageBox.Show($"瀵煎嚭 request.dat 澶辫触: {error}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"导出 request.dat 失败: {error}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -941,8 +941,8 @@ namespace LumbarMassageTest.UserControls
         {
             var dialog = new OpenFileDialog
             {
-                Filter = "License 鏂囦欢 (*.lic)|*.lic|鎵€鏈夋枃浠?(*.*)|*.*",
-                Title = "瀵煎叆鎺堟潈鏂囦欢"
+                Filter = "License 文件 (*.lic)|*.lic|所有文件 (*.*)|*.*",
+                Title = "导入授权文件"
             };
 
             if (dialog.ShowDialog() != true)
@@ -952,18 +952,18 @@ namespace LumbarMassageTest.UserControls
 
             if (!_licenseService.ImportLicenseFile(dialog.FileName, out var error))
             {
-                MessageBox.Show($"瀵煎叆 license.lic 澶辫触: {error}", "閿欒", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"导入 license.lic 失败: {error}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
             if (_licenseService.IsLicenseValid(out var reason))
             {
-                MessageBox.Show("鎺堟潈瀵煎叆鎴愬姛", "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("授权导入成功", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 UpdateLicenseUi();
             }
             else
             {
-                MessageBox.Show($"鎺堟潈鏂囦欢宸插鍏ワ紝浣嗘牎楠屽け璐? {reason}", "璀﹀憡", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show($"授权文件已导入，但校验失败: {reason}", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 

@@ -61,7 +61,7 @@ namespace LumbarMassageTest.Services
                     byte[] tail = await ReadExactAsync(port, 2, cancellationToken).ConfigureAwait(false);
                     byte[] response = CombineArrays(header, tail);
                     ValidateResponse(unitId, response, 0x03, allowException: true);
-                    throw new InvalidOperationException("Modbus RTU 寮傚父鍝嶅簲");
+                    throw new InvalidOperationException("Modbus RTU 异常响应");
                 }
 
                 int byteCount = header[2];
@@ -85,14 +85,14 @@ namespace LumbarMassageTest.Services
                 if (stopwatch.ElapsedMilliseconds > 300)
                 {
                     _logService.LogWarning(
-                        $"Modbus RTU 璇诲彇鑰楁椂 {stopwatch.ElapsedMilliseconds}ms (绔欏彿{unitId}, 鍦板潃{startAddress}, 鏁伴噺{count})");
+                        $"Modbus RTU 读取耗时 {stopwatch.ElapsedMilliseconds}ms (站号{unitId}, 地址{startAddress}, 数量{count})");
                 }
                 return registers;
             }
             catch (Exception ex)
             {
                 _logService.LogError(
-                    $"Modbus RTU 璇诲彇淇濇寔瀵勫瓨鍣ㄥけ璐?(绔欏彿{unitId}, 鍦板潃{startAddress}, 鏁伴噺{count}, 鑰楁椂{stopwatch.ElapsedMilliseconds}ms)",
+                    $"Modbus RTU 读取保持寄存器失败(站号{unitId}, 地址{startAddress}, 数量{count}, 耗时{stopwatch.ElapsedMilliseconds}ms)",
                     ex);
                 throw;
             }
@@ -190,7 +190,7 @@ namespace LumbarMassageTest.Services
                 }
                 catch (Exception ex)
                 {
-                    _logService.LogWarning("鍏抽棴Modbus RTU涓插彛澶辫触", ex);
+                    _logService.LogWarning("关闭Modbus RTU串口失败", ex);
                 }
                 finally
                 {
@@ -205,7 +205,7 @@ namespace LumbarMassageTest.Services
             }
             catch (Exception ex)
             {
-                _logService.LogError("鎵撳紑Modbus RTU涓插彛澶辫触", ex);
+                _logService.LogError("打开Modbus RTU串口失败", ex);
             }
         }
 
@@ -292,12 +292,12 @@ namespace LumbarMassageTest.Services
                 }
                 catch (TimeoutException ex)
                 {
-                    throw new TimeoutException("Modbus RTU 鍝嶅簲璇诲彇瓒呮椂", ex);
+                    throw new TimeoutException("Modbus RTU 响应读取超时", ex);
                 }
 
                 if (read <= 0)
                 {
-                    throw new InvalidOperationException("Modbus RTU 鍝嶅簲璇诲彇澶辫触");
+                    throw new InvalidOperationException("Modbus RTU 响应读取失败");
                 }
 
                 offset += read;
@@ -310,19 +310,19 @@ namespace LumbarMassageTest.Services
         {
             if (response.Length < 5)
             {
-                throw new InvalidOperationException("Modbus RTU 鍝嶅簲闀垮害寮傚父");
+                throw new InvalidOperationException("Modbus RTU 响应长度异常");
             }
 
             ushort crc = ComputeCrc(response, 0, response.Length - 2);
             ushort receivedCrc = (ushort)(response[^2] | (response[^1] << 8));
             if (crc != receivedCrc)
             {
-                throw new InvalidOperationException("Modbus RTU CRC 鏍￠獙澶辫触");
+                throw new InvalidOperationException("Modbus RTU CRC 校验失败");
             }
 
             if (response[0] != unitId)
             {
-                throw new InvalidOperationException("Modbus RTU 绔欏彿涓嶅尮閰?");
+                throw new InvalidOperationException("Modbus RTU 站号不匹配");
             }
 
             if (response[1] == (expectedFunctionCode | 0x80))
@@ -330,15 +330,15 @@ namespace LumbarMassageTest.Services
                 if (allowException)
                 {
                     byte exceptionCode = response[2];
-                    throw new InvalidOperationException($"Modbus RTU 寮傚父鍝嶅簲(鍔熻兘鐮?x{response[1]:X2}, 寮傚父鐮?x{exceptionCode:X2})");
+                    throw new InvalidOperationException($"Modbus RTU 异常响应(功能码0x{response[1]:X2}, 异常码0x{exceptionCode:X2})");
                 }
 
-                throw new InvalidOperationException("Modbus RTU 寮傚父鍝嶅簲");
+                throw new InvalidOperationException("Modbus RTU 异常响应");
             }
 
             if (response[1] != expectedFunctionCode)
             {
-                throw new InvalidOperationException("Modbus RTU 鍔熻兘鐮佷笉鍖归厤");
+                throw new InvalidOperationException("Modbus RTU 功能码不匹配");
             }
         }
 
@@ -371,4 +371,3 @@ namespace LumbarMassageTest.Services
         }
     }
 }
-
