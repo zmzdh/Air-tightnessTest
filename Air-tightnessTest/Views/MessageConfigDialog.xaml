@@ -1,0 +1,315 @@
+﻿ <Window x:Class="LumbarMassageTest.Views.MessageConfigDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="报文配置" 
+        Height="600" 
+        Width="1080"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F5F7FA">
+
+    <Window.Resources>
+        <!-- 按钮样式 -->
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="#4A6CF7"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}" 
+                                CornerRadius="6"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                BorderBrush="{TemplateBinding BorderBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#3A5CE5"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#2A4CD3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 文本框样式 -->
+        <Style x:Key="HexTextBox" TargetType="TextBox">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#E1E5EB"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#2D3748"/>
+            <Setter Property="Padding" Value="2"/>
+            <Style.Triggers>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="#4A6CF7"/>
+                    <Setter Property="Background" Value="#F0F4FF"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#CBD5E0"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 标签样式 -->
+        <Style x:Key="GridLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="#718096"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="White" 
+            Margin="15" 
+            CornerRadius="10" 
+            BorderThickness="1" 
+            BorderBrush="#E1E5EB">
+
+        <Grid Margin="31,9,9,31">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition/>
+                <RowDefinition Height="Auto" MinHeight="30"/>
+                <RowDefinition Height="Auto" MinHeight="50"/>
+            </Grid.RowDefinitions>
+
+            <!-- 标题区域 -->
+            <Border Grid.Row="0" 
+                    CornerRadius="8,8,0,0" 
+                    Margin="-20,-20,-20,20">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#4A6CF7" Offset="0"/>
+                        <GradientStop Color="#6B8AFF" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Grid>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0">
+                        <TextBlock Text="📨" 
+                                   FontSize="20"
+                                   Margin="0,0,10,0"/>
+                        <TextBlock Text="报文配置" 
+                                   Foreground="White" 
+                                   FontSize="18" 
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 内容区域 -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,10,0,80">
+                <StackPanel>
+                    <!-- 说明文本 -->
+                    <TextBlock Text="配置20个16进制数字的报文数据 (00-FF)"
+                               FontSize="14"
+                               Foreground="#4A5568"
+                               Margin="0,0,0,15"
+                               TextAlignment="Center"/>
+
+                    <!-- 报文输入网格 - 重新设计为紧凑的网格布局 -->
+                    <Border BorderThickness="1" 
+                            BorderBrush="#E1E5EB" 
+                            Background="#F8FAFC" 
+                            CornerRadius="8"
+                            Padding="20"
+                            Margin="0,0,0,20">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 第一行：字节1-20 -->
+                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                                <StackPanel.Resources>
+                                    <Style TargetType="TextBox" BasedOn="{StaticResource HexTextBox}"/>
+                                </StackPanel.Resources>
+                                <TextBox Name="MsgTextBox1" Tag="0" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox2" Tag="1" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox3" Tag="2" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox4" Tag="3" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox5" Tag="4" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox6" Tag="5" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox7" Tag="6" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox8" Tag="7" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox9" Tag="8" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox10" Tag="9" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox11" Tag="10" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox12" Tag="11" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox13" Tag="12" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox14" Tag="13" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox15" Tag="14" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox16" Tag="15" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox17" Tag="16" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox18" Tag="17" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox19" Tag="18" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                                <TextBox Name="MsgTextBox20" Tag="19" TextChanged="MessageTextBox_TextChanged" Margin="2"/>
+                            </StackPanel>
+
+                            <!-- 快捷操作区域 -->
+                            <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" 
+                                    Background="White" 
+                                    CornerRadius="6" 
+                                    BorderThickness="1"
+                                    BorderBrush="#E1E5EB"
+                                    Margin="0,15,0,0"
+                                    Padding="15">
+                                <StackPanel>
+                                    <TextBlock Text="快捷操作" 
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="#2D3748"
+                                               Margin="0,0,0,10"/>
+
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="填充常用报文" 
+                                                Click="BtnFill3A0D0A_Click"
+                                                Style="{StaticResource ModernButton}"
+                                                Padding="10,6"
+                                                FontSize="11"/>
+
+                                        <Button Content="全部清零" 
+                                                Click="BtnClearAll_Click"
+                                                Background="#FED7D7"
+                                                Foreground="#C53030"
+                                                BorderThickness="0"
+                                                Padding="10,6"
+                                                FontSize="11"
+                                                Margin="10,0,0,0"/>
+
+                                        <Button Content="读取报文" 
+                                                Click="BtnReadMessage_Click"
+                                                Background="#C6F6D5"
+                                                Foreground="#276749"
+                                                BorderThickness="0"
+                                                Padding="10,6"
+                                                FontSize="11"
+                                                Margin="10,0,0,0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 预览区域 -->
+                            <Border Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" 
+                                    Background="#F0F4FF" 
+                                    CornerRadius="6" 
+                                    BorderThickness="1" 
+                                    BorderBrush="#4A6CF7"
+                                    Margin="0,15,0,0"
+                                    Padding="15">
+                                <StackPanel>
+                                    <TextBlock Text="报文预览" 
+                                               FontWeight="SemiBold" 
+                                               Foreground="#4A6CF7"
+                                               Margin="0,0,0,8"/>
+                                    <TextBlock Name="PreviewTextBlock" 
+                                               TextWrapping="Wrap" 
+                                               FontFamily="Consolas"
+                                               FontSize="14"
+                                               Foreground="#2D3748"
+                                               TextAlignment="Center"/>
+                                    <Button Content="复制预览" 
+                                            Click="BtnCopyPreview_Click"
+                                            Background="Transparent"
+                                            Foreground="#4A6CF7"
+                                            BorderThickness="1"
+                                            BorderBrush="#4A6CF7"
+                                            Padding="8,4"
+                                            FontSize="11"
+                                            Margin="0,8,0,0"
+                                            HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- 状态信息 -->
+            <Border Grid.Row="1" 
+                    Background="#EDF2F7" 
+                    CornerRadius="6" 
+                    Padding="10"
+                    Margin="0,362,0,150">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="💡" 
+                               FontSize="14"
+                               Margin="0,0,8,0"/>
+                    <TextBlock Name="StatusTextBlock" 
+                               Text="请输入16进制数字 (00-FF)" 
+                               FontSize="12" 
+                               Foreground="#4A5568"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 按钮区域 -->
+            <StackPanel Grid.Row="3" 
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Center"
+                        Margin="0,5,0,0" Width="276">
+                <Button Content="确定" 
+                        Name="BtnOK"
+                        Style="{StaticResource ModernButton}"
+                        Click="BtnOK_Click"
+                        Width="120"
+                        IsDefault="True" Height="40"/>
+
+                <Button Content="取消" 
+                        Name="BtnCancel"
+                        Background="#E2E8F0"
+                        Foreground="#4A5568"
+                        BorderThickness="0"
+                        Padding="15,8"
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Click="BtnCancel_Click"
+                        Width="140"
+                        Margin="15,0,0,0"
+                        IsCancel="True">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="border" 
+                                    Background="{TemplateBinding Background}" 
+                                    CornerRadius="6"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    BorderBrush="{TemplateBinding BorderBrush}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="#D1D9E6"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="#B8C2D1"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,60 @@
+﻿<!-- LumbarMassageTestSystem.csproj -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+        <PropertyGroup>
+                <OutputType>WinExe</OutputType>
+                <TargetFramework>net8.0-windows</TargetFramework>
+                <Nullable>enable</Nullable>
+                <UseWPF>true</UseWPF>
+                <RootNamespace>LumbarMassageTest</RootNamespace>
+                <AssemblyName>LumbarMassageTest</AssemblyName>
+                <StartupObject>LumbarMassageTest.EntryPoint</StartupObject>
+                <AssemblyTitle>腰托按摩控制板检测系统</AssemblyTitle>
+		<AssemblyDescription>用于腰托按摩控制板的自动化检测系统</AssemblyDescription>
+		<AssemblyCompany>CSAS</AssemblyCompany>
+		<AssemblyCopyright>Copyright © 2026</AssemblyCopyright>
+		<AssemblyVersion>2.1.1.0</AssemblyVersion>
+		<PlatformTarget>x64</PlatformTarget>
+		<Platforms>AnyCPU;x64</Platforms>
+		<ApplicationIcon>CSAS_icon.ico</ApplicationIcon>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <Compile Remove="Config\**" />
+	  <Compile Remove="Images\**" />
+	  <Compile Remove="Logs\**" />
+	  <EmbeddedResource Remove="Config\**" />
+	  <EmbeddedResource Remove="Images\**" />
+	  <EmbeddedResource Remove="Logs\**" />
+	  <None Remove="Config\**" />
+	  <None Remove="Images\**" />
+	  <None Remove="Logs\**" />
+	  <Page Remove="Config\**" />
+	  <Page Remove="Images\**" />
+	  <Page Remove="Logs\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Resource Include="舒井logo.jpg" />
+	</ItemGroup>
+
+        <ItemGroup>
+                <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
+                <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.9" />
+                <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+                <PackageReference Include="System.Text.Json" Version="9.0.9" />
+                <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
+                <PackageReference Include="System.IO.Ports" Version="9.0.0" />
+        </ItemGroup>
+
+        <ItemGroup>
+                <Content Include="Docs/UsageHelp.txt">
+                        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+                </Content>
+                <Content Include="Licensing/Keys/public-key.pem">
+                        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+                </Content>
+        </ItemGroup>
+
+</Project>
+
