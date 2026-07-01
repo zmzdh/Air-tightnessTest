@@ -1,0 +1,56 @@
+﻿<!-- AudioActuatorCanTestSystem.csproj -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+        <PropertyGroup>
+                <OutputType>WinExe</OutputType>
+                <TargetFramework>net8.0-windows</TargetFramework>
+                <Nullable>enable</Nullable>
+                <UseWPF>true</UseWPF>
+                <RootNamespace>AudioActuatorCanTest</RootNamespace>
+                <StartupObject>AudioActuatorCanTest.EntryPoint</StartupObject>
+                <AssemblyTitle>音律震子控制盒检测系统</AssemblyTitle>
+                <AssemblyDescription>用于音律震子控制盒的自动化检测系统</AssemblyDescription>
+		<AssemblyCompany>CSAS</AssemblyCompany>
+		<AssemblyCopyright>Copyright © 2024</AssemblyCopyright>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<PlatformTarget>x64</PlatformTarget>
+		<Platforms>AnyCPU;x64</Platforms>
+		<ApplicationIcon>CSAS_icon_ultra_edge_ratio.ico</ApplicationIcon>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <Compile Remove="Config\**" />
+	  <Compile Remove="Images\**" />
+	  <Compile Remove="Logs\**" />
+	  <EmbeddedResource Remove="Config\**" />
+	  <EmbeddedResource Remove="Images\**" />
+	  <EmbeddedResource Remove="Logs\**" />
+	  <None Remove="Config\**" />
+	  <None Remove="Images\**" />
+	  <None Remove="Logs\**" />
+	  <Page Remove="Config\**" />
+	  <Page Remove="Images\**" />
+	  <Page Remove="Logs\**" />
+	</ItemGroup>
+
+        <ItemGroup>
+                <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
+                <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.9" />
+                <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+                <PackageReference Include="System.Text.Json" Version="9.0.9" />
+                <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
+                <PackageReference Include="System.IO.Ports" Version="9.0.0" />
+        </ItemGroup>
+
+        <ItemGroup>
+          <None Update="HCanbus.dll">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+          </None>
+        </ItemGroup>
+
+        <ItemGroup>
+          <Folder Include="Docs\" />
+        </ItemGroup>
+
+</Project>
+
