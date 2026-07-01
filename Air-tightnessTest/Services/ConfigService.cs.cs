@@ -84,7 +84,7 @@ namespace LumbarMassageTest.Services
             }
             catch (Exception ex)
             {
-                _logService.LogError("杩佺Щ鏃ч厤缃け璐?, ex);
+                _logService.LogError("迁移旧配置失败", ex);
             }
         }
 

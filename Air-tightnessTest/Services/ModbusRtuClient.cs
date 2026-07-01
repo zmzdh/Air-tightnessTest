@@ -322,7 +322,7 @@ namespace LumbarMassageTest.Services
 
             if (response[0] != unitId)
             {
-                throw new InvalidOperationException("Modbus RTU 绔欏彿涓嶅尮閰?);
+                throw new InvalidOperationException("Modbus RTU 绔欏彿涓嶅尮閰?");
             }
 
             if (response[1] == (expectedFunctionCode | 0x80))

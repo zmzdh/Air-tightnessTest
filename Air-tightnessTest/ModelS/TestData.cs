@@ -1248,25 +1248,25 @@ namespace LumbarMassageTest.Models
         public int Point { get; set; }
 
 #pragma warning disable CS0618 // 浣跨敤鍏煎鏃х増鏈厤缃殑灞炴€?
-        [Obsolete("鎸夋懇鍔ㄤ綔椤哄簭宸插純鐢紝浣跨敤鐐逛綅瀹氫箟鎵ц椤哄簭銆?)]
+        [Obsolete("鎸夋懇鍔ㄤ綔椤哄簭宸插純鐢紝浣跨敤鐐逛綅瀹氫箟鎵ц椤哄簭銆?")]
         public int Order { get; set; }
 
-        [Obsolete("鍗曞姩浣滄渶灏忔椂闀垮凡寮冪敤锛屾敼涓哄湪 MassageTestSettings 涓厤缃叡浜弬鏁般€?)]
+        [Obsolete("鍗曞姩浣滄渶灏忔椂闀垮凡寮冪敤锛屾敼涓哄湪 MassageTestSettings 涓厤缃叡浜弬鏁般€?")]
         public int MinDuration { get; set; } = 1000;
 
-        [Obsolete("鍗曞姩浣滄渶澶ф椂闀垮凡寮冪敤锛屾敼涓哄湪 MassageTestSettings 涓厤缃叡浜弬鏁般€?)]
+        [Obsolete("鍗曞姩浣滄渶澶ф椂闀垮凡寮冪敤锛屾敼涓哄湪 MassageTestSettings 涓厤缃叡浜弬鏁般€?")]
         public int MaxDuration { get; set; } = 5000;
 
-        [Obsolete("宄板€肩數娴佷笅闄愬凡杩佺Щ鍒板叡浜弬鏁伴厤缃€?)]
+        [Obsolete("宄板€肩數娴佷笅闄愬凡杩佺Щ鍒板叡浜弬鏁伴厤缃€?")]
         public double PeakCurrentMin { get; set; } = 100;
 
-        [Obsolete("宄板€肩數娴佷笂闄愬凡杩佺Щ鍒板叡浜弬鏁伴厤缃€?)]
+        [Obsolete("宄板€肩數娴佷笂闄愬凡杩佺Щ鍒板叡浜弬鏁伴厤缃€?")]
         public double PeakCurrentMax { get; set; } = 2000;
 
-        [Obsolete("骞冲潎鐢垫祦涓嬮檺宸茶縼绉诲埌鍏变韩鍙傛暟閰嶇疆銆?)]
+        [Obsolete("骞冲潎鐢垫祦涓嬮檺宸茶縼绉诲埌鍏变韩鍙傛暟閰嶇疆銆?")]
         public double AverageCurrentMin { get; set; } = 100;
 
-        [Obsolete("骞冲潎鐢垫祦涓婇檺宸茶縼绉诲埌鍏变韩鍙傛暟閰嶇疆銆?)]
+        [Obsolete("骞冲潎鐢垫祦涓婇檺宸茶縼绉诲埌鍏变韩鍙傛暟閰嶇疆銆?")]
         public double AverageCurrentMax { get; set; } = 1500;
 #pragma warning restore CS0618
 

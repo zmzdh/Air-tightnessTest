@@ -184,13 +184,13 @@ namespace LumbarMassageTest.UserControls
 
             if (invalid.Count > 0)
             {
-                string message = $"閫氶亾{channelLabel} 鑵版墭鍔ㄤ綔{order}鍖呭惈鏃犳晥瀵勫瓨鍣? {string.Join("銆?, invalid)}";
+                string message = $"閫氶亾{channelLabel} 鑵版墭鍔ㄤ綔{order}鍖呭惈鏃犳晥瀵勫瓨鍣? {string.Join(", ", invalid)}";
                 if (normalized.Count > 0)
                 {
-                    message += $"锛屽凡淇濈暀鏈夋晥瀵勫瓨鍣? {string.Join("銆?, normalized)}";
+                    message += $"锛屽凡淇濈暀鏈夋晥瀵勫瓨鍣? {string.Join(", ", normalized)}";
                 }
 
-                warningSink?.Invoke(message + "銆?);
+                warningSink?.Invoke(message + "銆?");
             }
 
             return string.Join(", ", normalized);
@@ -208,7 +208,7 @@ namespace LumbarMassageTest.UserControls
         {
             if (message == null)
             {
-                return "鏈厤缃?;
+                return "鏈厤缃?";
             }
 
             var normalized = NormalizeMessageArray(message);
@@ -440,13 +440,13 @@ namespace LumbarMassageTest.UserControls
             new(ManualControlKey.PowerOff, "鐢垫簮鍏抽棴", "0x", ModbusBitType.Coil),
             new(ManualControlKey.ClampCylinder, "澶圭揣姘旂几", "0x", ModbusBitType.Coil),
             new(ManualControlKey.SpareCylinder, "澶囩敤姘旂几", "0x", ModbusBitType.Coil),
-            new(ManualControlKey.DriverSwitch, "涓诲壇椹惧垏鎹?, "0x", ModbusBitType.Coil),
-            new(ManualControlKey.MassageKey, "鎸夋懇寮€鍏?, "0x", ModbusBitType.Coil),
-            new(ManualControlKey.FullTestLight, "鍏ㄦ祴鎸夐挳鐏?, "0x", ModbusBitType.Coil),
-            new(ManualControlKey.MassageLight, "鎸夋懇鎸夐挳鐏?, "0x", ModbusBitType.Coil),
-            new(ManualControlKey.SideWingLight, "渚х考鎸夐挳鐏?, "0x", ModbusBitType.Coil),
-            new(ManualControlKey.TestOkLight, "娴嬭瘯OK鐏?, "0x", ModbusBitType.Coil),
-            new(ManualControlKey.TestNgLight, "娴嬭瘯NG鐏?, "0x", ModbusBitType.Coil),
+                        new(ManualControlKey.DriverSwitch, "主副驾切换", "0x", ModbusBitType.Coil),
+                        new(ManualControlKey.MassageKey, "按摩开关", "0x", ModbusBitType.Coil),
+                        new(ManualControlKey.FullTestLight, "全测按钮灯", "0x", ModbusBitType.Coil),
+                        new(ManualControlKey.MassageLight, "按摩按钮灯", "0x", ModbusBitType.Coil),
+                        new(ManualControlKey.SideWingLight, "侧翼按钮灯", "0x", ModbusBitType.Coil),
+                        new(ManualControlKey.TestOkLight, "测试OK灯", "0x", ModbusBitType.Coil),
+                        new(ManualControlKey.TestNgLight, "测试NG灯", "0x", ModbusBitType.Coil),
             new(ManualControlKey.AirLeakStartButton, "气密启动按钮", "1x", ModbusBitType.DiscreteInput),
             new(ManualControlKey.HighPressureInletValve, "高压进气阀", "0x", ModbusBitType.Coil),
             new(ManualControlKey.HighPressureExhaustValve, "高压排气阀", "0x", ModbusBitType.Coil),
@@ -1575,7 +1575,7 @@ namespace LumbarMassageTest.UserControls
             int nextPoint = _massageActions.Any() ? _massageActions.Max(m => m.Point) + 1 : 1;
             if (nextPoint > MaxMassagePointCount)
             {
-                MessageBox.Show($"鎸夋懇鍔ㄤ綔鐐逛綅涓婇檺涓簕MaxMassagePointCount}锛屾棤娉曠户缁坊鍔犮€?, "鎻愮ず",
+                MessageBox.Show($"按摩动作点位上限为 {MaxMassagePointCount}，无法继续添加。", "提示",
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
@@ -1604,7 +1604,7 @@ namespace LumbarMassageTest.UserControls
             _messageKeyTests ??= new ObservableCollection<MessageKeyTestEntry>();
             if (_messageKeyTests.Count >= 8)
             {
-                MessageBox.Show("鎸夐敭鎶ユ枃娴嬭瘯閰嶇疆鏈€澶?椤广€?, "鎻愮ず", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("按键报文测试配置最多 8 项。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -1764,4 +1764,3 @@ namespace LumbarMassageTest.UserControls
 
     }
 }
-
