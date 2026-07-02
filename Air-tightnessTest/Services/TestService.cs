@@ -21,6 +21,7 @@ namespace LumbarMassageTest.Services
         public event EventHandler<TestRecord>? OnTestCompleted;
         public event EventHandler<TestMessageEventArgs>? OnTestMessage;
         public event EventHandler<ChannelTestResultEventArgs>? OnTestResultDisplay;
+        public event EventHandler<PressureSampleEventArgs>? OnPressureSample;
 
         public TestService(IPLCService plcService, ILogService? logService = null)
         {
@@ -353,6 +354,7 @@ namespace LumbarMassageTest.Services
             var pressureConfig = context.ChannelConfig.PressureConfig ?? new PressureChannelConfig();
             DateTime startTime = DateTime.Now;
             double startKPa = await _pressureService.ReadPressureKPaAsync(context.Channel, pressureConfig, token).ConfigureAwait(false);
+            RaisePressureSample(context.Channel, startKPa);
             RaiseStageChanged(context, stage, StepExecutionState.Running, $"{phase}ÆðÊ¼Ñ¹Á¦ {(startKPa * scale):F2}{unit}");
 
             int interval = Math.Max(50, GetSettings(context).PressureSampleIntervalMs);
@@ -363,9 +365,12 @@ namespace LumbarMassageTest.Services
                 int slice = Math.Min(interval, total - elapsed);
                 await Task.Delay(slice, token).ConfigureAwait(false);
                 elapsed += slice;
+                double sampleKPa = await _pressureService.ReadPressureKPaAsync(context.Channel, pressureConfig, token).ConfigureAwait(false);
+                RaisePressureSample(context.Channel, sampleKPa);
             }
 
             double endKPa = await _pressureService.ReadPressureKPaAsync(context.Channel, pressureConfig, token).ConfigureAwait(false);
+            RaisePressureSample(context.Channel, endKPa);
             DateTime endTime = DateTime.Now;
             double start = startKPa * scale;
             double end = endKPa * scale;
@@ -533,6 +538,10 @@ namespace LumbarMassageTest.Services
             }
         }
 
+        private void RaisePressureSample(int channel, double pressureKPa)
+        {
+            OnPressureSample?.Invoke(this, new PressureSampleEventArgs(channel, Math.Clamp(pressureKPa, 0, 200), DateTime.Now));
+        }
         private void RaiseTestMessage(string message, int? channel = null)
         {
             OnTestMessage?.Invoke(this, new TestMessageEventArgs(message ?? string.Empty, channel));

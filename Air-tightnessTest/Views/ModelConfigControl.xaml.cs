@@ -785,18 +785,18 @@ namespace LumbarMassageTest.UserControls
 
                 var process = _currentModel.ProcessConfig ?? new TestProcessConfig();
                 process.EnableBarcodeCheck = ChkEnableBarcode.IsChecked == true;
-                process.EnableCurrentMonitoring = ChkEnableCurrentMonitor.IsChecked == true;
-                process.RecordCurrentBeforeStart = ChkRecordCurrentBeforeStart.IsChecked == true;
-                process.EnableLumbarTest = ChkEnableLumbarTest.IsChecked != false;
-                process.EnableMassageTest = ChkEnableMassageTest.IsChecked != false;
-                process.CheckSameModel = ChkCheckSameModel.IsChecked == true;
+                process.EnableCurrentMonitoring = false;
+                process.RecordCurrentBeforeStart = false;
+                process.EnableLumbarTest = false;
+                process.EnableMassageTest = false;
+                process.CheckSameModel = false;
                 process.PromptOnDuplicateBarcode = ChkPromptOnDuplicate.IsChecked == true;
                 process.EnableBarcodePrefixCheck = ChkEnableBarcodePrefixCheck.IsChecked == true;
                 process.BarcodePrefix = TxtBarcodePrefix.Text?.Trim() ?? string.Empty;
-                process.MeasureSleepCurrent = ChkMeasureSleepCurrent.IsChecked == true;
-                process.MeasureStaticCurrent = ChkMeasureStaticCurrent.IsChecked == true;
+                process.MeasureSleepCurrent = false;
+                process.MeasureStaticCurrent = false;
                 process.MaxTestCount = int.Parse(TxtMaxTestCount.Text);
-                process.ModeSwitchPowerOffDuration = int.Parse(TxtPowerOffDuration.Text);
+                process.ModeSwitchPowerOffDuration = 0;
                 _currentModel.ProcessConfig = process;
 
                 _currentModel.Channel1Config ??= new ChannelConfig { ChannelName = "通道1" };
@@ -804,39 +804,22 @@ namespace LumbarMassageTest.UserControls
                 _currentModel.Channel3Config ??= new ChannelConfig { ChannelName = "通道3" };
                 _currentModel.Channel4Config ??= new ChannelConfig { ChannelName = "通道4" };
 
-                _currentModel.CurrentSleepConfig ??= new CurrentSleepConfig();
-                _currentModel.CurrentSleepConfig.StaticCurrentMin = double.Parse(TxtSharedStaticMin.Text);
-                _currentModel.CurrentSleepConfig.StaticCurrentMax = double.Parse(TxtSharedStaticMax.Text);
-                _currentModel.CurrentSleepConfig.WorkCurrentMin = double.Parse(TxtSharedWorkMin.Text);
-                _currentModel.CurrentSleepConfig.WorkCurrentMax = double.Parse(TxtSharedWorkMax.Text);
-                _currentModel.CurrentSleepConfig.CurrentOverLimit = double.Parse(TxtSharedCurrentOver.Text);
-                _currentModel.CurrentSleepConfig.SleepCurrentThreshold = double.Parse(TxtSharedSleepThreshold.Text);
-                _currentModel.CurrentSleepConfig.SleepTestTimeout = int.Parse(TxtSharedSleepTimeout.Text);
-                _currentModel.CurrentSleepConfig.HeightCodeMin = int.Parse(TxtSharedHeightCodeMin.Text);
-                _currentModel.CurrentSleepConfig.HeightCodeMax = int.Parse(TxtSharedHeightCodeMax.Text);
-                _currentModel.CurrentSleepConfig.HeightRangeMin = double.Parse(TxtSharedHeightRangeMin.Text);
-                _currentModel.CurrentSleepConfig.HeightRangeMax = double.Parse(TxtSharedHeightRangeMax.Text);
+                _currentModel.CurrentSleepConfig = new CurrentSleepConfig();
 
                 var ch1 = _currentModel.Channel1Config;
-                ch1.MessageKeyTestConfigs = _messageKeyTests?.Select(entry => CreateMessageKeyTestConfig(entry, 1)).ToList()
-                    ?? new List<MessageKeyTestConfig>();
-                ch1.LumbarTestConfigs = _lumbarActions?.Select(entry => CreateLumbarConfig(entry, 1)).ToList()
-                    ?? new List<LumbarTestConfig>();
-                ch1.MassageConfigs = _massageActions?.Select(entry => CreateMassageConfig(entry, 1)).ToList()
-                    ?? new List<MassageConfig>();
-                ch1.MassageTestSettings = CloneMassageSettings(_massageSettings);
-                ch1.MessageConfig = CloneMessageConfig(_messageConfig);
+                ch1.MessageKeyTestConfigs = new List<MessageKeyTestConfig>();
+                ch1.LumbarTestConfigs = new List<LumbarTestConfig>();
+                ch1.MassageConfigs = new List<MassageConfig>();
+                ch1.MassageTestSettings = new MassageTestSettings();
+                ch1.MessageConfig = new MessageConfig();
                 SaveManualControlConfig(ch1, 1);
 
                 var ch2 = _currentModel.Channel2Config;
-                ch2.MessageKeyTestConfigs = _messageKeyTests?.Select(entry => CreateMessageKeyTestConfig(entry, 2)).ToList()
-                    ?? new List<MessageKeyTestConfig>();
-                ch2.LumbarTestConfigs = _lumbarActions?.Select(entry => CreateLumbarConfig(entry, 2)).ToList()
-                    ?? new List<LumbarTestConfig>();
-                ch2.MassageConfigs = _massageActions?.Select(entry => CreateMassageConfig(entry, 2)).ToList()
-                    ?? new List<MassageConfig>();
-                ch2.MassageTestSettings = CloneMassageSettings(_massageSettings);
-                ch2.MessageConfig = CloneMessageConfig(_messageConfig);
+                ch2.MessageKeyTestConfigs = new List<MessageKeyTestConfig>();
+                ch2.LumbarTestConfigs = new List<LumbarTestConfig>();
+                ch2.MassageConfigs = new List<MassageConfig>();
+                ch2.MassageTestSettings = new MassageTestSettings();
+                ch2.MessageConfig = new MessageConfig();
                 SaveManualControlConfig(ch2, 2);
 
                 int channelCount = GetConfiguredChannelCount();
@@ -844,26 +827,20 @@ namespace LumbarMassageTest.UserControls
                 var ch4 = _currentModel.Channel4Config;
                 if (channelCount >= 3)
                 {
-                    ch3.MessageKeyTestConfigs = _messageKeyTests?.Select(entry => CreateMessageKeyTestConfig(entry, 3)).ToList()
-                        ?? new List<MessageKeyTestConfig>();
-                    ch3.LumbarTestConfigs = _lumbarActions?.Select(entry => CreateLumbarConfig(entry, 3)).ToList()
-                        ?? new List<LumbarTestConfig>();
-                    ch3.MassageConfigs = _massageActions?.Select(entry => CreateMassageConfig(entry, 3)).ToList()
-                        ?? new List<MassageConfig>();
-                    ch3.MassageTestSettings = CloneMassageSettings(_massageSettings);
-                    ch3.MessageConfig = CloneMessageConfig(_messageConfig);
+                    ch3.MessageKeyTestConfigs = new List<MessageKeyTestConfig>();
+                    ch3.LumbarTestConfigs = new List<LumbarTestConfig>();
+                    ch3.MassageConfigs = new List<MassageConfig>();
+                    ch3.MassageTestSettings = new MassageTestSettings();
+                    ch3.MessageConfig = new MessageConfig();
                     SaveManualControlConfig(ch3, 3);
                 }
                 if (channelCount >= 4)
                 {
-                    ch4.MessageKeyTestConfigs = _messageKeyTests?.Select(entry => CreateMessageKeyTestConfig(entry, 4)).ToList()
-                        ?? new List<MessageKeyTestConfig>();
-                    ch4.LumbarTestConfigs = _lumbarActions?.Select(entry => CreateLumbarConfig(entry, 4)).ToList()
-                        ?? new List<LumbarTestConfig>();
-                    ch4.MassageConfigs = _massageActions?.Select(entry => CreateMassageConfig(entry, 4)).ToList()
-                        ?? new List<MassageConfig>();
-                    ch4.MassageTestSettings = CloneMassageSettings(_massageSettings);
-                    ch4.MessageConfig = CloneMessageConfig(_messageConfig);
+                    ch4.MessageKeyTestConfigs = new List<MessageKeyTestConfig>();
+                    ch4.LumbarTestConfigs = new List<LumbarTestConfig>();
+                    ch4.MassageConfigs = new List<MassageConfig>();
+                    ch4.MassageTestSettings = new MassageTestSettings();
+                    ch4.MessageConfig = new MessageConfig();
                     SaveManualControlConfig(ch4, 4);
                 }
 
@@ -1504,7 +1481,6 @@ namespace LumbarMassageTest.UserControls
             {
                 SaveCurrentModel();
                 await _configService.SaveProductModelAsync(_currentModel);
-                await SaveMessageConfigsToDatabaseAsync(_currentModel);
                 MessageBox.Show("保存成功", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 ModelListBox.ItemsSource = _productModels.Select(m => m.ModelName).ToList();
             }

@@ -35,12 +35,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Services\CommService.cs" />
     <Compile Remove="Services\SensorModbusService.cs" />
-    <Compile Remove="Services\SerialPortService.cs" />
-    <Compile Remove="Views\ManualControl.xaml.cs" />
     <Compile Remove="Views\AutoTest\MassageTestView.xaml.cs" />
-    <Page Remove="Views\ManualControl.xaml" />
     <Page Remove="Views\AutoTest\MassageTestView.xaml" />
   </ItemGroup>
 

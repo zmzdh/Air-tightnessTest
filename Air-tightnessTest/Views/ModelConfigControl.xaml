@@ -73,7 +73,7 @@
                                           Checked="ChkEnableLumbarTest_Checked"
                                           Unchecked="ChkEnableLumbarTest_Checked"/>
                                 <CheckBox Name="ChkEnableMassageTest" Visibility="Collapsed" Content="启用按摩测试" Margin="5"/>
-                                <CheckBox Name="ChkCheckSameModel" Content="主副驾同款检查" Margin="5"/>
+                                <CheckBox Name="ChkCheckSameModel" Visibility="Collapsed" Content="主副驾同款检查" Margin="5"/>
                                 <CheckBox Name="ChkPromptOnDuplicate" Content="重复扫码提示" Margin="5"/>
                                 <CheckBox Name="ChkEnableBarcodePrefixCheck" Content="扫码前缀判断" Margin="5"/>
                                 <StackPanel Orientation="Horizontal" Margin="5">
@@ -88,17 +88,14 @@
                                     <TextBox Name="TxtMaxTestCount" Width="60" Margin="10,0,0,0" Height="25"/>
                                 </StackPanel>
 
-                                <StackPanel Orientation="Horizontal" Margin="5">
-                                    <TextBlock Text="主副驾断电(ms):" VerticalAlignment="Center" Width="100"/>
-                                    <TextBox Name="TxtPowerOffDuration" Width="80" Margin="10,0,0,0" Height="25"/>
-                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="5" Visibility="Collapsed"><TextBlock Text="主副驾断电(ms):" VerticalAlignment="Center" Width="100"/><TextBox Name="TxtPowerOffDuration" Width="80" Margin="10,0,0,0" Height="25"/></StackPanel>
                             </StackPanel>
                         </Grid>
                     </GroupBox>
 
                     <!-- 通道配置 -->
                     <StackPanel Margin="0,0,0,20">
-                        <GroupBox Header="报文配置" Margin="0,0,0,15">
+                        <GroupBox Header="报文配置" Margin="0,0,0,15" Visibility="Collapsed">
                             <StackPanel>
                                 <TabControl>
                                     <TabItem Header="开机报文">
@@ -191,7 +188,7 @@
                             </StackPanel>
                         </GroupBox>
 
-                        <GroupBox Header="电流与休眠参数(通道共用)" Margin="0,0,0,15">
+                        <GroupBox Header="电流与休眠参数(通道共用)" Margin="0,0,0,15" Visibility="Collapsed">
                             <StackPanel Margin="10">
                                 <TextBlock Text="通用参数" FontWeight="Bold" Margin="0,0,0,10"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,5">

@@ -1,4 +1,4 @@
-﻿// UserControls/TestControl.xaml.cs
+// UserControls/TestControl.xaml.cs
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using LumbarMassageTest.Models;
@@ -58,6 +59,10 @@ namespace LumbarMassageTest.UserControls
         private readonly Dictionary<int, ChannelDailyProduction> _channelDailyStats = new();
         private readonly Dictionary<int, DateTime> _channelStartTimes = new();
         private readonly Dictionary<int, ChannelInfoWidgets> _channelInfoWidgets = new();
+        private readonly Dictionary<int, List<double>> _pressureSamples = new();
+        private readonly Dictionary<int, Polyline> _pressureLines = new();
+        private readonly Dictionary<int, TextBlock> _pressureValueLabels = new();
+        private readonly Dictionary<int, Canvas> _pressureCanvases = new();
         private readonly DispatcherTimer _elapsedTimer;
 
         private static readonly TimeSpan BarcodeInputResetThreshold = TimeSpan.FromMilliseconds(500);
@@ -183,8 +188,162 @@ namespace LumbarMassageTest.UserControls
                 _massagePointViews[channel].ItemsSource = points;
                 UpdateGraphicVisibility(channel, showLumbar: false, showMassage: false);
             }
+
+            InitializePressureCharts();
         }
 
+        private void InitializePressureCharts()
+        {
+            CreatePressureChart(1, Ch1GraphicPlaceholder);
+            CreatePressureChart(2, Ch2GraphicPlaceholder);
+            CreatePressureChart(3, Ch3GraphicPlaceholder);
+            CreatePressureChart(4, Ch4GraphicPlaceholder);
+        }
+
+        private void CreatePressureChart(int channel, FrameworkElement placeholder)
+        {
+            if (placeholder.Parent is not StackPanel parent)
+            {
+                return;
+            }
+
+            placeholder.Visibility = Visibility.Collapsed;
+            if (_lumbarPanels.TryGetValue(channel, out var lumbarPanel))
+            {
+                lumbarPanel.Visibility = Visibility.Collapsed;
+            }
+
+            if (_massagePanels.TryGetValue(channel, out var massagePanel))
+            {
+                massagePanel.Visibility = Visibility.Collapsed;
+            }
+
+            var valueLabel = new TextBlock
+            {
+                Text = "0.00 KPa",
+                FontSize = 20,
+                FontWeight = FontWeights.Bold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+
+            var canvas = new Canvas
+            {
+                Height = 170,
+                MinWidth = 180,
+                Background = Brushes.White,
+                ClipToBounds = true
+            };
+
+            var border = new Border
+            {
+                BorderBrush = Brushes.LightGray,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(6),
+                Child = canvas
+            };
+
+            var maxLabel = new TextBlock
+            {
+                Text = "200 KPa",
+                FontSize = 11,
+                Foreground = Brushes.Gray,
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+
+            var minLabel = new TextBlock
+            {
+                Text = "0 KPa",
+                FontSize = 11,
+                Foreground = Brushes.Gray,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+
+            var panel = new StackPanel { Margin = new Thickness(0, 8, 0, 6) };
+            panel.Children.Add(valueLabel);
+            panel.Children.Add(maxLabel);
+            panel.Children.Add(border);
+            panel.Children.Add(minLabel);
+            parent.Children.Add(panel);
+
+            var line = new Polyline
+            {
+                Stroke = new SolidColorBrush(Color.FromRgb(43, 94, 190)),
+                StrokeThickness = 2
+            };
+            canvas.Children.Add(line);
+            canvas.SizeChanged += (_, _) => RedrawPressureCurve(channel);
+
+            _pressureSamples[channel] = new List<double>();
+            _pressureLines[channel] = line;
+            _pressureValueLabels[channel] = valueLabel;
+            _pressureCanvases[channel] = canvas;
+        }
+
+        private void AppendPressureSample(int channel, double pressureKPa)
+        {
+            if (!_pressureSamples.TryGetValue(channel, out var samples))
+            {
+                return;
+            }
+
+            double value = Math.Clamp(pressureKPa, 0, 200);
+            samples.Add(value);
+            if (samples.Count > 120)
+            {
+                samples.RemoveAt(0);
+            }
+
+            if (_pressureValueLabels.TryGetValue(channel, out var label))
+            {
+                label.Text = $"{value:F2} KPa";
+            }
+
+            RedrawPressureCurve(channel);
+        }
+
+        private void ResetPressureCurve(int channel)
+        {
+            if (_pressureSamples.TryGetValue(channel, out var samples))
+            {
+                samples.Clear();
+            }
+
+            if (_pressureValueLabels.TryGetValue(channel, out var label))
+            {
+                label.Text = "0.00 KPa";
+            }
+
+            RedrawPressureCurve(channel);
+        }
+
+        private void RedrawPressureCurve(int channel)
+        {
+            if (!_pressureSamples.TryGetValue(channel, out var samples)
+                || !_pressureLines.TryGetValue(channel, out var line)
+                || !_pressureCanvases.TryGetValue(channel, out var canvas))
+            {
+                return;
+            }
+
+            double width = canvas.ActualWidth > 0 ? canvas.ActualWidth : 220;
+            double height = canvas.ActualHeight > 0 ? canvas.ActualHeight : 170;
+            line.Points.Clear();
+
+            if (samples.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < samples.Count; i++)
+            {
+                double x = samples.Count == 1 ? 0 : i * width / (samples.Count - 1);
+                double y = height - (samples[i] / 200.0 * height);
+                line.Points.Add(new Point(x, Math.Clamp(y, 0, height)));
+            }
+        }
         private void InitializeChannelInfoPanels()
         {
             _channelInfoWidgets[1] = new ChannelInfoWidgets(Ch1ElapsedPanel, Ch1ElapsedText, Ch1CountPanel,
@@ -423,9 +582,9 @@ namespace LumbarMassageTest.UserControls
             }
 
             string resolvedPath = path;
-            if (!Path.IsPathFullyQualified(resolvedPath))
+            if (!System.IO.Path.IsPathFullyQualified(resolvedPath))
             {
-                resolvedPath = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? string.Empty, resolvedPath));
+                resolvedPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? string.Empty, resolvedPath));
             }
 
             if (!File.Exists(resolvedPath))
@@ -457,10 +616,23 @@ namespace LumbarMassageTest.UserControls
             return $"CSAS{DateTime.Now:yyyyMM}";
         }
 
+        private static IEnumerable<TestStage> GetDisplayedTestStages()
+        {
+            yield return TestStage.HighPressureInflate;
+            yield return TestStage.HighPressureStabilize;
+            yield return TestStage.HighPressureLeakCheck;
+            yield return TestStage.HighPressureExhaust;
+            yield return TestStage.LowPressureInflate;
+            yield return TestStage.LowPressureStabilize;
+            yield return TestStage.LowPressureLeakCheck;
+            yield return TestStage.LowPressureExhaust;
+            yield return TestStage.Completed;
+            yield return TestStage.Aborted;
+        }
         private ObservableCollection<TestStageItem> CreateStageCollection()
         {
             var stages = new ObservableCollection<TestStageItem>();
-            foreach (var stage in Enum.GetValues<TestStage>())
+            foreach (var stage in GetDisplayedTestStages())
             {
                 stages.Add(new TestStageItem(stage, GetStageDisplayName(stage)));
             }
@@ -500,6 +672,7 @@ namespace LumbarMassageTest.UserControls
             _testService.OnTestCompleted += TestService_OnTestCompleted;
             _testService.OnTestMessage += TestService_OnTestMessage;
             _testService.OnTestResultDisplay += TestService_OnTestResultDisplay;
+            _testService.OnPressureSample += TestService_OnPressureSample;
         }
 
         private void TestService_OnTestStageChanged(object sender, TestStageChangedEventArgs e)
@@ -510,18 +683,6 @@ namespace LumbarMassageTest.UserControls
                 {
                     ClearGraphicRetention(e.Channel);
                 }
-                if (e.State == StepExecutionState.Failed)
-                {
-                    if (e.Stage == TestStage.LumbarTest)
-                    {
-                        SetGraphicRetention(e.Channel, GraphicRetention.Lumbar);
-                    }
-                    else if (e.Stage == TestStage.MassageTest || e.Stage == TestStage.MasterModeMassage)
-                    {
-                        SetGraphicRetention(e.Channel, GraphicRetention.Massage);
-                    }
-                }
-
                 if (_channelStages.TryGetValue(e.Channel, out var stages))
                 {
                     var stageItem = stages.FirstOrDefault(s => s.Stage == e.Stage);
@@ -535,11 +696,7 @@ namespace LumbarMassageTest.UserControls
                 var channelName = GetChannelDisplayName(e.Channel);
                 SetChannelStatusMessage(e.Channel,
                     $"{channelName} - {GetStageDisplayName(e.Stage)} ({GetStateDescription(e.State)})");
-
-                bool showLumbar = e.Stage == TestStage.LumbarTest && e.State == StepExecutionState.Running;
-                bool showMassage = (e.Stage == TestStage.MassageTest || e.Stage == TestStage.MasterModeMassage)
-                    && e.State == StepExecutionState.Running;
-                UpdateGraphicVisibility(e.Channel, showLumbar, showMassage);
+                UpdateGraphicVisibility(e.Channel, showLumbar: false, showMassage: false);
             });
         }
 
@@ -551,18 +708,9 @@ namespace LumbarMassageTest.UserControls
             {
                 return;
             }
-
-            if (!showLumbar && !showMassage
-                && _graphicRetentions.TryGetValue(channel, out var retention)
-                && retention != GraphicRetention.None)
-            {
-                showLumbar = retention == GraphicRetention.Lumbar;
-                showMassage = retention == GraphicRetention.Massage;
-            }
-
-            lumbarPanel.Visibility = showLumbar ? Visibility.Visible : Visibility.Collapsed;
-            massagePanel.Visibility = showMassage ? Visibility.Visible : Visibility.Collapsed;
-            placeholder.Visibility = (!showLumbar && !showMassage) ? Visibility.Visible : Visibility.Collapsed;
+            lumbarPanel.Visibility = Visibility.Collapsed;
+            massagePanel.Visibility = Visibility.Collapsed;
+            placeholder.Visibility = Visibility.Collapsed;
         }
 
         private void SetGraphicRetention(int channel, GraphicRetention retention)
@@ -755,6 +903,10 @@ namespace LumbarMassageTest.UserControls
             });
         }
 
+        private void TestService_OnPressureSample(object sender, PressureSampleEventArgs e)
+        {
+            Dispatcher.Invoke(() => AppendPressureSample(e.Channel, e.PressureKPa));
+        }
         private void TestService_OnTestResultDisplay(object sender, ChannelTestResultEventArgs e)
         {
             Dispatcher.Invoke(() =>
@@ -1885,13 +2037,13 @@ namespace LumbarMassageTest.UserControls
 
         private enum GraphicRetention
         {
-            None,
-            Lumbar,
-            Massage
+            None
         }
 
         private void ResetChannelVisual(int channel)
         {
+            ResetPressureCurve(channel);
+
             if (_channelStages.TryGetValue(channel, out var stages))
             {
                 foreach (var item in stages)
@@ -2032,58 +2184,14 @@ namespace LumbarMassageTest.UserControls
             AddResultItem(panel, "工单号", record.WorkOrder);
             AddResultItem(panel, "产品码", GetMaskedProductCode(record.ProductCode));
             AddResultItem(panel, "测试序号", record.TestCount.ToString());
-
-            if (record.SleepCurrent.HasValue)
-            {
-                AddResultItem(panel, "休眠电流", $"{record.SleepCurrent.Value:F2} mA");
-            }
-
-            if (record.StaticCurrent.HasValue)
-            {
-                AddResultItem(panel, "静态电流", $"{record.StaticCurrent.Value:F2} mA");
-            }
-
             if (!string.IsNullOrEmpty(record.FailReason))
             {
                 AddResultItem(panel, "失败原因", record.FailReason, Brushes.Firebrick);
             }
-
-            if (record.LumbarResults.Any())
+            if (record.AirLeakResults.Any())
             {
-                var summary = string.Join("; ", record.LumbarResults.Select(r =>
-                {
-                    string target = $"{r.TargetHeight:F1}mm/{r.TargetTime}ms";
-                    string actualHeight = r.ActualHeight.HasValue ? $"{r.ActualHeight.Value:F1}mm" : "-";
-                    string actualTime = r.ActualTime.HasValue ? $"{r.ActualTime.Value}ms" : "-";
-                    string actionLabel = r.Action.ToDisplayName();
-                    string orderText = string.IsNullOrWhiteSpace(actionLabel)
-                        ? $"动作{r.Order}"
-                        : $"动作{r.Order}({actionLabel})";
-                    return $"{orderText}({target}->{actualHeight}/{actualTime}):{(r.Passed ? "OK" : "NG")}";
-                }));
-                AddResultItem(panel, "腰托结果", summary);
-            }
-
-            if (record.MassageResults.Any())
-            {
-                var failedResults = record.MassageResults.Where(r => !r.Passed).ToList();
-                if (failedResults.Any())
-                {
-                    var displayedFailures = failedResults
-                        .Take(8)
-                        .Select(r => $"点{r.Point}:{(string.IsNullOrWhiteSpace(r.Message) ? "NG" : r.Message)}");
-                    string summary = string.Join("; ", displayedFailures);
-                    if (failedResults.Count > 8)
-                    {
-                        summary += $"...等{failedResults.Count}个失败点";
-                    }
-                    AddResultItem(panel, "按摩结果", summary, Brushes.Firebrick);
-                }
-                else
-                {
-                    var summary = string.Join("; ", record.MassageResults.Select(r => $"点{r.Point}:OK"));
-                    AddResultItem(panel, "按摩结果", summary);
-                }
+                var airLeakSummary = string.Join("; ", record.AirLeakResults.Select(r => $"{r.Phase}: {r.StartPressure:F2}->{r.EndPressure:F2}{r.Unit}, Δ{r.PressureDrop:F2}/{r.Limit:F2}{r.Unit} {(r.Passed ? "OK" : "NG")}"));
+                AddResultItem(panel, "气密结果", airLeakSummary, record.AirLeakResults.Any(r => !r.Passed) ? Brushes.Firebrick : Brushes.Black);
             }
 
             var stageSummary = string.Join(" ->", record.StageResults
@@ -2141,16 +2249,16 @@ namespace LumbarMassageTest.UserControls
             {
                 TestStage.Standby => "待机检查",
                 TestStage.ScanBarcode => "扫码",
-                TestStage.StartTest => "启动测试",
-                TestStage.SleepTest => "休眠测试",
-                TestStage.StaticCurrentTest => "静态电流",
-                TestStage.StatusMessageCheck => "状态报文",
-                TestStage.LumbarTest => "腰托测试",
-                TestStage.MassageTest => "按摩测试",
-                TestStage.MasterSlaveDecision => "模式切换",
-                TestStage.MasterModeMassage => "按摩2测试",
+                TestStage.HighPressureInflate => "高压充气",
+                TestStage.HighPressureStabilize => "高压静置等待",
+                TestStage.HighPressureLeakCheck => "压差测算",
+                TestStage.HighPressureExhaust => "高压排气",
+                TestStage.LowPressureInflate => "低压充气",
+                TestStage.LowPressureStabilize => "低压静置等待",
+                TestStage.LowPressureLeakCheck => "压差计算",
+                TestStage.LowPressureExhaust => "低压排气",
                 TestStage.Completed => "测试完成",
-                TestStage.Aborted => "测试终止",
+                TestStage.Aborted => "测试中止",
                 _ => stage.ToString()
             };
         }

@@ -27,6 +27,8 @@ namespace LumbarMassageTest
         private readonly ModbusServerService _modbusService;
         private readonly ILogService _logService;
         private readonly LicenseService _licenseService;
+        private readonly SerialPortService _serialPortService;
+        private readonly CommService _commService;
         //private readonly ICodeScanService _codeScanService;
 
         private User _currentUser;
@@ -35,6 +37,7 @@ namespace LumbarMassageTest
 
         // 用户控件
         private TestControl _testControl;
+        private ManualControl _manualControl;
         private ModelConfigControl _modelControl;
         private ReportControl _reportControl;
         private UserManagementControl _userControl;
@@ -75,6 +78,8 @@ namespace LumbarMassageTest
             _mesService = new MesService(_logService);
             _modbusService = new ModbusServerService(_logService);
             _licenseService = new LicenseService(_logService);
+            _serialPortService = new SerialPortService(SerialPortConfig.CreateDefaultDevice1(), _logService);
+            _commService = new CommService(_serialPortService, _logService);
             _mesService.OnConnectionChanged += MesService_OnConnectionChanged;
             _modbusService.OnServerStateChanged += ModbusService_OnServerStateChanged;
             MesService_OnConnectionChanged(_mesService, _mesService.IsConnected);
@@ -274,6 +279,7 @@ namespace LumbarMassageTest
 
                 // 先加载配置，避免界面先按4通道渲染后再切回2通道导致闪烁
                 await EnsureAppConfigLoadedAsync();
+                ApplySerialConfig(_latestAppConfig ?? new AppConfig());
 
                 // 默认显示测试界面
                 ShowTestControl();
@@ -314,6 +320,7 @@ namespace LumbarMassageTest
         private void SetUserPermissions()
         {
             ConfigureButtonAccess(BtnTest, HasPermission(Permission.Test));
+            ConfigureButtonAccess(BtnManual, HasPermission(Permission.Manual));
             ConfigureButtonAccess(BtnModel, HasPermission(Permission.Model));
             ConfigureButtonAccess(BtnReport, HasPermission(Permission.Report));
             ConfigureButtonAccess(BtnUser, HasPermission(Permission.UserManagement));
@@ -467,6 +474,7 @@ namespace LumbarMassageTest
                 return;
             }
 
+            _serialPortService.UpdateConfig(config.SerialDevice1 ?? SerialPortConfig.CreateDefaultDevice1());
             _testService.ConfigurePressureModule(config);
         }
 
@@ -948,6 +956,10 @@ namespace LumbarMassageTest
                 {
                     testControl.UpdateWithPLCData(uiSnapshot);
                 }
+                else if (MainContentControl.Content is ManualControl manualControl)
+                {
+                    manualControl.UpdateWithPLCData(uiSnapshot);
+                }
 
                 // 更新状态显示
                 TxtPLCStatus.Text = $"PLC: {(_plcService.IsConnected ? "已连接" : "未连接")}";
@@ -1044,6 +1056,11 @@ namespace LumbarMassageTest
         }
 
 
+        public ProductModel? GetCurrentModelForManual()
+        {
+            return _currentModelForMapping ?? _testControl?.SelectedModel;
+        }
+
         public int GetConfiguredChannelCountForUi()
         {
             return GetConfiguredChannelCount();
@@ -1080,6 +1097,7 @@ namespace LumbarMassageTest
                 CylinderOpen = source.CylinderOpen,
                 CylinderClose = source.CylinderClose,
                 DriverSwitch = source.DriverSwitch,
+                MassageKey = source.MassageKey,
                 FullTestLight = source.FullTestLight,
                 MassageLight = source.MassageLight,
                 SideWingLight = source.SideWingLight,
@@ -1089,6 +1107,11 @@ namespace LumbarMassageTest
                 DownInflateUpDeflate = source.DownInflateUpDeflate,
                 BothInflate = source.BothInflate,
                 BothDeflate = source.BothDeflate,
+                AirLeakStartButton = source.AirLeakStartButton,
+                HighPressureInletValve = source.HighPressureInletValve,
+                HighPressureExhaustValve = source.HighPressureExhaustValve,
+                LowPressureInletValve = source.LowPressureInletValve,
+                LowPressureExhaustValve = source.LowPressureExhaustValve,
                 CommSingleSend = source.CommSingleSend,
                 CommContinuousSend = source.CommContinuousSend,
                 OutputSpare1 = source.OutputSpare1,
@@ -1130,6 +1153,16 @@ namespace LumbarMassageTest
             ShowTestControl();
         }
 
+
+        private void BtnManual_Click(object sender, RoutedEventArgs e)
+        {
+            if (!EnsurePermission(Permission.Manual))
+            {
+                return;
+            }
+
+            ShowManualControl();
+        }
 
         private void BtnModel_Click(object sender, RoutedEventArgs e)
         {
@@ -1209,6 +1242,28 @@ namespace LumbarMassageTest
             }
         }
 
+
+        private void ShowManualControl()
+        {
+            try
+            {
+                if (_manualControl == null)
+                {
+                    _manualControl = new ManualControl(_commService, _logService);
+                }
+
+                _manualControl.ApplyManualConfig(GetCurrentModelForManual());
+                _manualControl.UpdateWithPLCData(GetCurrentPLCData());
+                MainContentControl.Content = _manualControl;
+                ResetButtonStyles();
+                BtnManual.Background = GetNavBrush("NavButtonSelectedBrush");
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError("加载手动调试控件失败", ex);
+                MessageBox.Show($"加载手动调试控件失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
         private void ShowModelControl()
         {
@@ -1330,6 +1385,7 @@ namespace LumbarMassageTest
         {
             var defaultBrush = GetNavBrush("NavButtonDefaultBrush");
             BtnTest.Background = defaultBrush;
+            BtnManual.Background = defaultBrush;
             BtnModel.Background = defaultBrush;
             BtnReport.Background = defaultBrush;
             BtnUser.Background = defaultBrush;
@@ -1410,6 +1466,7 @@ namespace LumbarMassageTest
             {
                 _testService?.StopAllTests();
                 _testService?.Dispose();
+                _serialPortService?.Dispose();
             }
             catch (Exception ex)
             {

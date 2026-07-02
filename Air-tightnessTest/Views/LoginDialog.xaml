@@ -23,7 +23,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <!-- 标题 -->
-        <TextBlock Grid.Row="0" Text="上海舒井腰托按摩控制板检测系统"
+        <TextBlock Grid.Row="0" Text="上海舒井气袋气密性检测系统"
                    FontSize="36" FontWeight="Bold"
                    HorizontalAlignment="Center" Margin="0,20,0,10"
                    Foreground="{StaticResource BlueDark}"/>

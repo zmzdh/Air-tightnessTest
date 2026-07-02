@@ -1627,6 +1627,19 @@ namespace LumbarMassageTest.Models
         public double CurrentValue { get; set; }
     }
 
+    public class PressureSampleEventArgs : EventArgs
+    {
+        public PressureSampleEventArgs(int channel, double pressureKPa, DateTime timestamp)
+        {
+            Channel = channel;
+            PressureKPa = pressureKPa;
+            Timestamp = timestamp;
+        }
+
+        public int Channel { get; }
+        public double PressureKPa { get; }
+        public DateTime Timestamp { get; }
+    }
     public class TestStageChangedEventArgs : EventArgs
     {
         public int Channel { get; set; }
