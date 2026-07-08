@@ -1,4 +1,4 @@
-// UserControls/ModelConfigControl.xaml.cs
+﻿// UserControls/ModelConfigControl.xaml.cs
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -52,7 +52,15 @@ namespace LumbarMassageTest.UserControls
 
             DataContext = this;
             InitializeMessageKeyTriggerModeColumn();
+            ConfigureAirLeakInputState();
             ApplyChannelColumnVisibility();
+        }
+
+        private void ConfigureAirLeakInputState()
+        {
+            const string highPressureTimingOnlyTip = "高压阶段仅按充气、保持、放气时间运行，不进行气密判定。";
+            TxtHighDetectDuration.IsEnabled = false;
+            TxtHighDetectDuration.ToolTip = highPressureTimingOnlyTip;
         }
 
         private void ApplyChannelColumnVisibility()
@@ -360,7 +368,8 @@ namespace LumbarMassageTest.UserControls
             HighPressureInletValve,
             HighPressureExhaustValve,
             LowPressureInletValve,
-            LowPressureExhaustValve
+            LowPressureExhaustValve,
+            PressureTransducerIsolationValve
         }
 
         private sealed record ManualControlDefinition(
@@ -440,7 +449,8 @@ namespace LumbarMassageTest.UserControls
             new(ManualControlKey.HighPressureInletValve, "高压进气阀", "0x", ModbusBitType.Coil),
             new(ManualControlKey.HighPressureExhaustValve, "高压排气阀", "0x", ModbusBitType.Coil),
             new(ManualControlKey.LowPressureInletValve, "低压进气阀", "0x", ModbusBitType.Coil),
-            new(ManualControlKey.LowPressureExhaustValve, "低压排气阀", "0x", ModbusBitType.Coil)
+            new(ManualControlKey.LowPressureExhaustValve, "低压排气阀", "0x", ModbusBitType.Coil),
+            new(ManualControlKey.PressureTransducerIsolationValve, "变送器隔离阀", "0x", ModbusBitType.Coil)
         };
 
         private async void LoadProductModels()
@@ -502,7 +512,6 @@ namespace LumbarMassageTest.UserControls
             TxtBarcodePrefix.Text = process.BarcodePrefix ?? string.Empty;
             ChkMeasureSleepCurrent.IsChecked = process.MeasureSleepCurrent;
             ChkMeasureStaticCurrent.IsChecked = process.MeasureStaticCurrent;
-            TxtMaxTestCount.Text = process.MaxTestCount.ToString();
             TxtPowerOffDuration.Text = process.ModeSwitchPowerOffDuration.ToString();
             UpdateLumbarConfigVisibility(process.EnableLumbarTest);
 
@@ -517,6 +526,8 @@ namespace LumbarMassageTest.UserControls
             var ch4 = _currentModel.Channel4Config;
 
             _currentModel.CurrentSleepConfig ??= CurrentSleepConfig.FromChannel(ch1);
+            _currentModel.AirLeakTestSettings ??= ch1.AirLeakTestSettings ?? new AirLeakTestSettings();
+            LoadAirLeakSettings(_currentModel.AirLeakTestSettings);
             var shared = _currentModel.CurrentSleepConfig;
             if (shared != null)
             {
@@ -611,6 +622,7 @@ namespace LumbarMassageTest.UserControls
                     ManualControlKey.HighPressureExhaustValve => manual.HighPressureExhaustValveAddress,
                     ManualControlKey.LowPressureInletValve => manual.LowPressureInletValveAddress,
                     ManualControlKey.LowPressureExhaustValve => manual.LowPressureExhaustValveAddress,
+                    ManualControlKey.PressureTransducerIsolationValve => manual.PressureTransducerIsolationValveAddress,
                     _ => string.Empty
                 };
 
@@ -619,6 +631,72 @@ namespace LumbarMassageTest.UserControls
             }
         }
 
+
+        private void LoadAirLeakSettings(AirLeakTestSettings settings)
+        {
+            settings ??= new AirLeakTestSettings();
+            TxtAirTargetPressure.Text = settings.TargetPressureKPa.ToString();
+            TxtLowMaxDrop.Text = settings.LowMaxDropPa.ToString();
+            TxtGrossLeakThreshold.Text = settings.GrossLeakThresholdKPa.ToString();
+            TxtHighInflateDuration.Text = settings.HighInflateDurationMs.ToString();
+            TxtHighStabilizeDuration.Text = settings.HighStabilizeDurationMs.ToString();
+            TxtHighDetectDuration.Text = settings.HighDetectDurationMs.ToString();
+            TxtHighExhaustDuration.Text = settings.HighExhaustDurationMs.ToString();
+            TxtLowInflateDuration.Text = settings.LowInflateDurationMs.ToString();
+            TxtLowStabilizeDuration.Text = settings.LowStabilizeDurationMs.ToString();
+            TxtLowDetectDuration.Text = settings.LowDetectDurationMs.ToString();
+            TxtLowExhaustDuration.Text = settings.LowExhaustDurationMs.ToString();
+            TxtPressureSampleInterval.Text = settings.PressureSampleIntervalMs.ToString();
+        }
+
+        private AirLeakTestSettings ReadAirLeakSettings()
+        {
+            return new AirLeakTestSettings
+            {
+                TargetPressureKPa = ParseDouble(TxtAirTargetPressure.Text, 100),
+                HighOutputPressureKPa = ParseDouble(TxtAirTargetPressure.Text, 100),
+                LowOutputPressureKPa = ParseDouble(TxtAirTargetPressure.Text, 100),
+                LowMaxDropPa = ParseDouble(TxtLowMaxDrop.Text, 100),
+                GrossLeakThresholdKPa = ParseDouble(TxtGrossLeakThreshold.Text, 10),
+                HighInflateDurationMs = ParseNonNegativeInt(TxtHighInflateDuration.Text, 3000),
+                HighStabilizeDurationMs = ParseNonNegativeInt(TxtHighStabilizeDuration.Text, 2000),
+                HighDetectDurationMs = ParseNonNegativeInt(TxtHighDetectDuration.Text, 5000),
+                HighExhaustDurationMs = ParseNonNegativeInt(TxtHighExhaustDuration.Text, 3000),
+                LowInflateDurationMs = ParseNonNegativeInt(TxtLowInflateDuration.Text, 3000),
+                LowStabilizeDurationMs = ParseNonNegativeInt(TxtLowStabilizeDuration.Text, 2000),
+                LowDetectDurationMs = ParseNonNegativeInt(TxtLowDetectDuration.Text, 5000),
+                LowExhaustDurationMs = ParseNonNegativeInt(TxtLowExhaustDuration.Text, 3000),
+                PressureSampleIntervalMs = Math.Max(50, ParseNonNegativeInt(TxtPressureSampleInterval.Text, 200))
+            };
+        }
+
+        private static AirLeakTestSettings CloneAirLeakTestSettings(AirLeakTestSettings source)
+        {
+            source ??= new AirLeakTestSettings();
+            return new AirLeakTestSettings
+            {
+                HighInflateDurationMs = source.HighInflateDurationMs,
+                HighStabilizeDurationMs = source.HighStabilizeDurationMs,
+                HighDetectDurationMs = source.HighDetectDurationMs,
+                HighExhaustDurationMs = source.HighExhaustDurationMs,
+                GrossLeakThresholdKPa = source.GrossLeakThresholdKPa,
+                TargetPressureKPa = source.TargetPressureKPa,
+                HighOutputPressureKPa = source.HighOutputPressureKPa,
+                LowInflateDurationMs = source.LowInflateDurationMs,
+                LowStabilizeDurationMs = source.LowStabilizeDurationMs,
+                LowDetectDurationMs = source.LowDetectDurationMs,
+                LowExhaustDurationMs = source.LowExhaustDurationMs,
+                LowMaxDropPa = source.LowMaxDropPa,
+                LowOutputPressureKPa = source.LowOutputPressureKPa,
+                PressureSampleIntervalMs = source.PressureSampleIntervalMs
+            };
+        }
+
+        private static int ParseNonNegativeInt(string text, int defaultValue)
+            => int.TryParse(text, out var value) && value >= 0 ? value : defaultValue;
+
+        private static double ParseDouble(string text, double defaultValue)
+            => double.TryParse(text, out var value) ? value : defaultValue;
         private void SaveManualControlConfig(ChannelConfig config, int channel)
         {
             EnsureManualControlEntries();
@@ -687,6 +765,9 @@ namespace LumbarMassageTest.UserControls
                         break;
                     case ManualControlKey.LowPressureExhaustValve:
                         manual.LowPressureExhaustValveAddress = normalized;
+                        break;
+                    case ManualControlKey.PressureTransducerIsolationValve:
+                        manual.PressureTransducerIsolationValveAddress = normalized;
                         break;
                 }
             }
@@ -795,7 +876,6 @@ namespace LumbarMassageTest.UserControls
                 process.BarcodePrefix = TxtBarcodePrefix.Text?.Trim() ?? string.Empty;
                 process.MeasureSleepCurrent = false;
                 process.MeasureStaticCurrent = false;
-                process.MaxTestCount = int.Parse(TxtMaxTestCount.Text);
                 process.ModeSwitchPowerOffDuration = 0;
                 _currentModel.ProcessConfig = process;
 
@@ -805,6 +885,7 @@ namespace LumbarMassageTest.UserControls
                 _currentModel.Channel4Config ??= new ChannelConfig { ChannelName = "通道4" };
 
                 _currentModel.CurrentSleepConfig = new CurrentSleepConfig();
+                _currentModel.AirLeakTestSettings = ReadAirLeakSettings();
 
                 var ch1 = _currentModel.Channel1Config;
                 ch1.MessageKeyTestConfigs = new List<MessageKeyTestConfig>();
@@ -846,10 +927,18 @@ namespace LumbarMassageTest.UserControls
 
                 _currentModel.CurrentSleepConfig.ApplyToChannel(ch1);
                 _currentModel.CurrentSleepConfig.ApplyToChannel(ch2);
+                ch1.AirLeakTestSettings = CloneAirLeakTestSettings(_currentModel.AirLeakTestSettings);
+                ch2.AirLeakTestSettings = CloneAirLeakTestSettings(_currentModel.AirLeakTestSettings);
                 if (channelCount >= 3)
+                {
                     _currentModel.CurrentSleepConfig.ApplyToChannel(ch3);
+                    ch3.AirLeakTestSettings = CloneAirLeakTestSettings(_currentModel.AirLeakTestSettings);
+                }
                 if (channelCount >= 4)
+                {
                     _currentModel.CurrentSleepConfig.ApplyToChannel(ch4);
+                    ch4.AirLeakTestSettings = CloneAirLeakTestSettings(_currentModel.AirLeakTestSettings);
+                }
 
                 if (_lumbarAddressWarnings.Count > 0)
                 {
@@ -1426,7 +1515,6 @@ namespace LumbarMassageTest.UserControls
             ChkPromptOnDuplicate.IsChecked = false;
             ChkEnableBarcodePrefixCheck.IsChecked = false;
             TxtBarcodePrefix.Text = string.Empty;
-            TxtMaxTestCount.Text = "0";
             TxtPowerOffDuration.Text = "0";
             UpdateLumbarConfigVisibility(false);
 

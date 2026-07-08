@@ -14,6 +14,9 @@ namespace LumbarMassageTest.Services
 
     public class UserPreferenceService
     {
+        private const string LegacyAppDataFolderName = "LumbarMassageTest";
+        private static string AppDataFolderName => typeof(UserPreferenceService).Assembly.GetName().Name ?? "Air-tightnessTest";
+
         private readonly string _filePath;
         private readonly JsonSerializerOptions _jsonOptions = new()
         {
@@ -25,11 +28,21 @@ namespace LumbarMassageTest.Services
         public UserPreferenceService()
         {
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var folder = Path.Combine(appDataPath, "LumbarMassageTest");
+            var folder = Path.Combine(appDataPath, AppDataFolderName);
             Directory.CreateDirectory(folder);
             _filePath = Path.Combine(folder, "login_preferences.json");
+            MigrateLegacyPreferences(appDataPath);
 
             Load();
+        }
+
+        private void MigrateLegacyPreferences(string appDataPath)
+        {
+            var legacyFilePath = Path.Combine(appDataPath, LegacyAppDataFolderName, "login_preferences.json");
+            if (!File.Exists(_filePath) && File.Exists(legacyFilePath))
+            {
+                File.Copy(legacyFilePath, _filePath);
+            }
         }
 
         public void Save(string username, string password, bool rememberPassword)

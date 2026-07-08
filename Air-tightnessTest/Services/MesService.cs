@@ -30,7 +30,7 @@ namespace LumbarMassageTest.Services
 
         public bool IsConnected => _isConnected;
 
-        public async Task<bool> ConnectAsync(AppConfig config, CancellationToken cancellationToken = default)
+        public async Task<bool> ConnectAsync(SystemConfig config, CancellationToken cancellationToken = default)
         {
             if (_disposed)
             {
@@ -99,7 +99,7 @@ namespace LumbarMassageTest.Services
             return Task.CompletedTask;
         }
 
-        public async Task<bool> SimulatePushAsync(AppConfig config, CancellationToken cancellationToken = default)
+        public async Task<bool> SimulatePushAsync(SystemConfig config, CancellationToken cancellationToken = default)
         {
             if (_disposed)
             {
@@ -149,7 +149,7 @@ namespace LumbarMassageTest.Services
             }
         }
 
-        public async Task<bool> SendTestRecordAsync(TestRecord record, AppConfig config, CancellationToken cancellationToken = default)
+        public async Task<bool> SendTestRecordAsync(TestRecord record, SystemConfig config, CancellationToken cancellationToken = default)
         {
             if (_disposed)
             {
@@ -272,7 +272,7 @@ namespace LumbarMassageTest.Services
             };
         }
 
-        private static Uri BuildMesUri(AppConfig config)
+        private static Uri BuildMesUri(SystemConfig config)
         {
             var builder = new UriBuilder
             {

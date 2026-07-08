@@ -30,7 +30,8 @@ namespace LumbarMassageTest.UserControls
 
         private List<ProductModel> _productModels;
         private ProductModel _selectedModel;
-        private AppConfig _appConfig;
+        private SystemConfig? _systemConfig;
+        private RuntimeConfig? _runtimeConfig;
         private string _pendingSelectedModelName;
 
         public ProductModel? SelectedModel => _selectedModel;
@@ -60,6 +61,9 @@ namespace LumbarMassageTest.UserControls
         private readonly Dictionary<int, DateTime> _channelStartTimes = new();
         private readonly Dictionary<int, ChannelInfoWidgets> _channelInfoWidgets = new();
         private readonly Dictionary<int, List<double>> _pressureSamples = new();
+        private readonly Dictionary<int, List<DateTime>> _pressureSampleTimes = new();
+        private readonly Dictionary<int, DateTime> _channelValveOpenTime = new();
+        private readonly Dictionary<int, DateTime> _channelValveCloseTime = new();
         private readonly Dictionary<int, Polyline> _pressureLines = new();
         private readonly Dictionary<int, TextBlock> _pressureValueLabels = new();
         private readonly Dictionary<int, Canvas> _pressureCanvases = new();
@@ -182,10 +186,7 @@ namespace LumbarMassageTest.UserControls
             foreach (int channel in new[] { 1, 2, 3, 4 })
             {
                 _graphicRetentions[channel] = GraphicRetention.None;
-                var points = new ObservableCollection<MassagePointIndicator>(
-                    Enumerable.Range(1, 32).Select(index => new MassagePointIndicator(index)));
-                _channelMassagePoints[channel] = points;
-                _massagePointViews[channel].ItemsSource = points;
+                _massagePointViews[channel].ItemsSource = null;
                 UpdateGraphicVisibility(channel, showLumbar: false, showMassage: false);
             }
 
@@ -246,7 +247,7 @@ namespace LumbarMassageTest.UserControls
 
             var maxLabel = new TextBlock
             {
-                Text = "200 KPa",
+                Text = "60 KPa",
                 FontSize = 11,
                 Foreground = Brushes.Gray,
                 HorizontalAlignment = HorizontalAlignment.Left
@@ -277,23 +278,35 @@ namespace LumbarMassageTest.UserControls
             canvas.SizeChanged += (_, _) => RedrawPressureCurve(channel);
 
             _pressureSamples[channel] = new List<double>();
+            _pressureSampleTimes[channel] = new List<DateTime>();
             _pressureLines[channel] = line;
             _pressureValueLabels[channel] = valueLabel;
             _pressureCanvases[channel] = canvas;
         }
 
-        private void AppendPressureSample(int channel, double pressureKPa)
+        private void AppendPressureSample(int channel, double pressureKPa, DateTime timestamp)
         {
             if (!_pressureSamples.TryGetValue(channel, out var samples))
             {
                 return;
             }
 
-            double value = Math.Clamp(pressureKPa, 0, 200);
+            double value = Math.Clamp(pressureKPa, 0, 60);
             samples.Add(value);
-            if (samples.Count > 120)
+            if (!_pressureSampleTimes.TryGetValue(channel, out var times))
+            {
+                times = new List<DateTime>();
+                _pressureSampleTimes[channel] = times;
+            }
+            times.Add(timestamp);
+
+            if (samples.Count > 5000)
             {
                 samples.RemoveAt(0);
+                if (times.Count > 0)
+                {
+                    times.RemoveAt(0);
+                }
             }
 
             if (_pressureValueLabels.TryGetValue(channel, out var label))
@@ -310,6 +323,14 @@ namespace LumbarMassageTest.UserControls
             {
                 samples.Clear();
             }
+
+            if (_pressureSampleTimes.TryGetValue(channel, out var times))
+            {
+                times.Clear();
+            }
+
+            _channelValveOpenTime.Remove(channel);
+            _channelValveCloseTime.Remove(channel);
 
             if (_pressureValueLabels.TryGetValue(channel, out var label))
             {
@@ -337,10 +358,27 @@ namespace LumbarMassageTest.UserControls
                 return;
             }
 
+            if (!_pressureSampleTimes.TryGetValue(channel, out var times)
+                || times.Count != samples.Count
+                || !_channelValveOpenTime.TryGetValue(channel, out var openTime))
+            {
+                for (int i = 0; i < samples.Count; i++)
+                {
+                    double x = samples.Count == 1 ? 0 : i * width / (samples.Count - 1);
+                    double y = height - (samples[i] / 60.0 * height);
+                    line.Points.Add(new Point(x, Math.Clamp(y, 0, height)));
+                }
+
+                return;
+            }
+
+            DateTime windowEnd = _channelValveCloseTime.TryGetValue(channel, out var closeTime) ? closeTime : DateTime.Now;
+            double windowMs = Math.Max((windowEnd - openTime).TotalMilliseconds, 1.0);
             for (int i = 0; i < samples.Count; i++)
             {
-                double x = samples.Count == 1 ? 0 : i * width / (samples.Count - 1);
-                double y = height - (samples[i] / 200.0 * height);
+                double fraction = Math.Clamp((times[i] - openTime).TotalMilliseconds / windowMs, 0, 1);
+                double x = fraction * width;
+                double y = height - (samples[i] / 60.0 * height);
                 line.Points.Add(new Point(x, Math.Clamp(y, 0, height)));
             }
         }
@@ -396,24 +434,26 @@ namespace LumbarMassageTest.UserControls
         {
             try
             {
-                _appConfig = await _configService.LoadAppConfigAsync();
+                _systemConfig = await _configService.LoadSystemConfigAsync();
+                _runtimeConfig = await _configService.LoadRuntimeConfigAsync();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"加载应用配置失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                _appConfig = new AppConfig();
+                _systemConfig = new SystemConfig();
+                _runtimeConfig = new RuntimeConfig();
             }
 
-            string workOrder = _appConfig?.LastWorkOrder;
+            string workOrder = _runtimeConfig?.LastWorkOrder;
             if (string.IsNullOrWhiteSpace(workOrder))
             {
                 workOrder = GenerateDefaultWorkOrder();
-                if (_appConfig != null)
+                if (_runtimeConfig != null)
                 {
-                    _appConfig.LastWorkOrder = workOrder;
+                    _runtimeConfig.LastWorkOrder = workOrder;
                     try
                     {
-                        await _configService.SaveAppConfigAsync(_appConfig);
+                        await _configService.SaveRuntimeConfigAsync(_runtimeConfig);
                     }
                     catch (Exception ex)
                     {
@@ -424,7 +464,7 @@ namespace LumbarMassageTest.UserControls
 
             TxtWorkOrder.Text = workOrder;
 
-            _pendingSelectedModelName = _appConfig?.LastProductModel;
+            _pendingSelectedModelName = _runtimeConfig?.LastProductModel;
             ApplyPersistedModelSelection();
             InitializeProductionState();
             ApplyTargetProductionAuthorization();
@@ -473,8 +513,10 @@ namespace LumbarMassageTest.UserControls
             Ch4LumbarPanel.Visibility = Visibility.Collapsed;
             Ch3MassagePanel.Visibility = Visibility.Collapsed;
             Ch4MassagePanel.Visibility = Visibility.Collapsed;
-            Ch3GraphicPlaceholder.Visibility = ch3Visible ? Visibility.Visible : Visibility.Collapsed;
-            Ch4GraphicPlaceholder.Visibility = ch4Visible ? Visibility.Visible : Visibility.Collapsed;
+            Ch1GraphicPlaceholder.Visibility = Visibility.Collapsed;
+            Ch2GraphicPlaceholder.Visibility = Visibility.Collapsed;
+            Ch3GraphicPlaceholder.Visibility = Visibility.Collapsed;
+            Ch4GraphicPlaceholder.Visibility = Visibility.Collapsed;
             ModelImageSection.Visibility = isTwoChannelMode ? Visibility.Collapsed : Visibility.Visible;
 
             ApplyChannelGridLayout(ChannelActionGrid, channelCount);
@@ -534,7 +576,7 @@ namespace LumbarMassageTest.UserControls
 
         private int GetConfiguredChannelCount()
         {
-            var count = _appConfig?.ChannelCount ?? 4;
+            var count = _systemConfig?.ChannelCount ?? 4;
             if (count == 2 || count == 3) return count;
             return 4;
         }
@@ -618,9 +660,10 @@ namespace LumbarMassageTest.UserControls
 
         private static IEnumerable<TestStage> GetDisplayedTestStages()
         {
+            yield return TestStage.ScanBarcode;
+            yield return TestStage.StartTest;
             yield return TestStage.HighPressureInflate;
             yield return TestStage.HighPressureStabilize;
-            yield return TestStage.HighPressureLeakCheck;
             yield return TestStage.HighPressureExhaust;
             yield return TestStage.LowPressureInflate;
             yield return TestStage.LowPressureStabilize;
@@ -673,6 +716,7 @@ namespace LumbarMassageTest.UserControls
             _testService.OnTestMessage += TestService_OnTestMessage;
             _testService.OnTestResultDisplay += TestService_OnTestResultDisplay;
             _testService.OnPressureSample += TestService_OnPressureSample;
+            _testService.OnIsolationValveChanged += TestService_OnIsolationValveChanged;
         }
 
         private void TestService_OnTestStageChanged(object sender, TestStageChangedEventArgs e)
@@ -879,7 +923,7 @@ namespace LumbarMassageTest.UserControls
                 UpdateChannelButtons(record.Channel);
                 UpdateChannelInfoDisplay(record.Channel);
                 UpdateOverallProductionDisplay();
-                _ = SaveAppConfigAsync();
+                _ = SaveRuntimeConfigAsync();
             });
         }
 
@@ -905,7 +949,24 @@ namespace LumbarMassageTest.UserControls
 
         private void TestService_OnPressureSample(object sender, PressureSampleEventArgs e)
         {
-            Dispatcher.Invoke(() => AppendPressureSample(e.Channel, e.PressureKPa));
+            Dispatcher.Invoke(() => AppendPressureSample(e.Channel, e.PressureKPa, e.Timestamp));
+        }
+        private void TestService_OnIsolationValveChanged(object sender, IsolationValveChangedEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (e.IsOpen)
+                {
+                    ResetPressureCurve(e.Channel);
+                    _channelValveOpenTime[e.Channel] = DateTime.Now;
+                    _channelValveCloseTime.Remove(e.Channel);
+                }
+                else if (_channelValveOpenTime.ContainsKey(e.Channel))
+                {
+                    _channelValveCloseTime[e.Channel] = DateTime.Now;
+                    RedrawPressureCurve(e.Channel);
+                }
+            });
         }
         private void TestService_OnTestResultDisplay(object sender, ChannelTestResultEventArgs e)
         {
@@ -940,9 +1001,9 @@ namespace LumbarMassageTest.UserControls
         private void CmbProductModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             _selectedModel = CmbProductModel.SelectedItem as ProductModel;
-            if (_appConfig != null)
+            if (_runtimeConfig != null)
             {
-                _appConfig.LastProductModel = _selectedModel?.ModelName ?? string.Empty;
+                _runtimeConfig.LastProductModel = _selectedModel?.ModelName ?? string.Empty;
             }
 
             UpdateModelImage();
@@ -951,11 +1012,11 @@ namespace LumbarMassageTest.UserControls
 
         private async void BtnMesConnect_Click(object sender, RoutedEventArgs e)
         {
-            AppConfig config;
+            SystemConfig config;
             try
             {
-                config = await _configService.LoadAppConfigAsync();
-                _appConfig = config;
+                config = await _configService.LoadSystemConfigAsync();
+                _systemConfig = config;
             }
             catch (Exception ex)
             {
@@ -963,7 +1024,7 @@ namespace LumbarMassageTest.UserControls
                 return;
             }
 
-            config ??= new AppConfig();
+            config ??= new SystemConfig();
             var mode = config.MesIntegrationMode;
 
             if (!ValidateMesConfiguration(config, mode, out string errorMessage))
@@ -1030,7 +1091,7 @@ namespace LumbarMassageTest.UserControls
         {
             SetMesButtonsEnabled(false, false);
 
-            var mode = _appConfig?.MesIntegrationMode ?? MesIntegrationMode.HttpPush;
+            var mode = _systemConfig?.MesIntegrationMode ?? MesIntegrationMode.HttpPush;
 
             if (mode == MesIntegrationMode.ModbusServer)
             {
@@ -1080,7 +1141,7 @@ namespace LumbarMassageTest.UserControls
 
         private void UpdateMesIntegrationUI()
         {
-            var mode = _appConfig?.MesIntegrationMode ?? MesIntegrationMode.HttpPush;
+            var mode = _systemConfig?.MesIntegrationMode ?? MesIntegrationMode.HttpPush;
             if (mode == MesIntegrationMode.ModbusServer)
             {
                 bool running = _modbusService.IsRunning;
@@ -1109,7 +1170,7 @@ namespace LumbarMassageTest.UserControls
             BtnMesDisconnect.IsEnabled = disconnectEnabled;
         }
 
-        private static bool ValidateMesConfiguration(AppConfig config, MesIntegrationMode mode, out string errorMessage)
+        private static bool ValidateMesConfiguration(SystemConfig config, MesIntegrationMode mode, out string errorMessage)
         {
             if (config == null)
             {
@@ -1395,22 +1456,22 @@ namespace LumbarMassageTest.UserControls
         {
             try
             {
-                _appConfig ??= await _configService.LoadAppConfigAsync();
+                _runtimeConfig ??= await _configService.LoadRuntimeConfigAsync();
             }
             catch (Exception)
             {
-                _appConfig = new AppConfig();
+                _runtimeConfig = new RuntimeConfig();
             }
 
-            if (_appConfig == null)
+            if (_runtimeConfig == null)
             {
                 return;
             }
 
-            _appConfig.LastWorkOrder = TxtWorkOrder.Text?.Trim() ?? string.Empty;
-            _appConfig.LastProductModel = _selectedModel?.ModelName ?? string.Empty;
+            _runtimeConfig.LastWorkOrder = TxtWorkOrder.Text?.Trim() ?? string.Empty;
+            _runtimeConfig.LastProductModel = _selectedModel?.ModelName ?? string.Empty;
 
-            await _configService.SaveAppConfigAsync(_appConfig);
+            await _configService.SaveRuntimeConfigAsync(_runtimeConfig);
         }
 
         public Task<bool> StartChannelFromPlcAsync(int channel)
@@ -1759,57 +1820,58 @@ namespace LumbarMassageTest.UserControls
 
         private void UpdateTargetProductionText()
         {
-            _targetProduction = Math.Max(0, _appConfig?.TargetProduction ?? 0);
+            _targetProduction = Math.Max(0, _runtimeConfig?.TargetProduction ?? 0);
             TxtTargetProduction.Text = _targetProduction.ToString();
         }
 
         private void EnsureDailyProductionState()
         {
-            if (_appConfig == null)
+            if (_runtimeConfig == null)
             {
                 return;
             }
 
             string today = DateTime.Today.ToString("yyyy-MM-dd");
-            if (!string.Equals(_appConfig.DailyProductionDate, today, StringComparison.Ordinal))
+            if (!string.Equals(_runtimeConfig.DailyProductionDate, today, StringComparison.Ordinal))
             {
-                _appConfig.DailyProductionDate = today;
-                _appConfig.DailyTestCount = 0;
-                _appConfig.DailyPassCount = 0;
-                _appConfig.DailyFailCount = 0;
+                _runtimeConfig.DailyProductionDate = today;
+                _runtimeConfig.DailyTestCount = 0;
+                _runtimeConfig.DailyPassCount = 0;
+                _runtimeConfig.DailyFailCount = 0;
                 ResetChannelDailyStats();
                 LoadDailyProductionCounts();
                 UpdateOverallProductionDisplay();
                 UpdateAllChannelInfoDisplays();
-                _ = SaveAppConfigAsync();
+                _ = SaveRuntimeConfigAsync();
             }
         }
 
         private void ResetChannelDailyStats()
         {
-            _appConfig.DailyChannelProductions ??= new List<ChannelDailyProduction>();
-            _appConfig.DailyChannelProductions.Clear();
+            _runtimeConfig ??= new RuntimeConfig();
+            _runtimeConfig.DailyChannelProductions ??= new List<ChannelDailyProduction>();
+            _runtimeConfig.DailyChannelProductions.Clear();
 
             foreach (int channel in new[] { 1, 2, 3, 4 })
             {
-                _appConfig.DailyChannelProductions.Add(new ChannelDailyProduction { Channel = channel });
+                _runtimeConfig.DailyChannelProductions.Add(new ChannelDailyProduction { Channel = channel });
             }
         }
 
         private void LoadDailyProductionCounts()
         {
-            _testCount = _appConfig?.DailyTestCount ?? 0;
-            _passCount = _appConfig?.DailyPassCount ?? 0;
-            _failCount = _appConfig?.DailyFailCount ?? 0;
+            _testCount = _runtimeConfig?.DailyTestCount ?? 0;
+            _passCount = _runtimeConfig?.DailyPassCount ?? 0;
+            _failCount = _runtimeConfig?.DailyFailCount ?? 0;
 
             TxtTestCount.Text = _testCount.ToString();
             TxtPassCount.Text = _passCount.ToString();
             TxtFailCount.Text = _failCount.ToString();
 
             _channelDailyStats.Clear();
-            _appConfig ??= new AppConfig();
-            _appConfig.DailyChannelProductions ??= new List<ChannelDailyProduction>();
-            var channelStats = _appConfig.DailyChannelProductions;
+            _runtimeConfig ??= new RuntimeConfig();
+            _runtimeConfig.DailyChannelProductions ??= new List<ChannelDailyProduction>();
+            var channelStats = _runtimeConfig.DailyChannelProductions;
             foreach (int channel in new[] { 1, 2, 3, 4 })
             {
                 var stats = channelStats.FirstOrDefault(s => s.Channel == channel);
@@ -1824,19 +1886,19 @@ namespace LumbarMassageTest.UserControls
 
         private void UpdateChannelDailyStats(TestRecord record)
         {
-            if (_appConfig == null)
+            if (_runtimeConfig == null)
             {
                 return;
             }
 
-            _appConfig.DailyTestCount = ++_testCount;
+            _runtimeConfig.DailyTestCount = ++_testCount;
             if (record.Result == TestResult.Pass)
             {
-                _appConfig.DailyPassCount = ++_passCount;
+                _runtimeConfig.DailyPassCount = ++_passCount;
             }
             else
             {
-                _appConfig.DailyFailCount = ++_failCount;
+                _runtimeConfig.DailyFailCount = ++_failCount;
             }
 
             if (_channelDailyStats.TryGetValue(record.Channel, out var stats))
@@ -1950,16 +2012,16 @@ namespace LumbarMassageTest.UserControls
             StopElapsedTimerIfNeeded();
         }
 
-        private async Task SaveAppConfigAsync()
+        private async Task SaveRuntimeConfigAsync()
         {
-            if (_appConfig == null)
+            if (_runtimeConfig == null)
             {
                 return;
             }
 
             try
             {
-                await _configService.SaveAppConfigAsync(_appConfig);
+                await _configService.SaveRuntimeConfigAsync(_runtimeConfig);
             }
             catch (Exception)
             {
@@ -2003,10 +2065,10 @@ namespace LumbarMassageTest.UserControls
             }
 
             _targetProduction = target;
-            _appConfig ??= new AppConfig();
-            _appConfig.TargetProduction = target;
+            _runtimeConfig ??= new RuntimeConfig();
+            _runtimeConfig.TargetProduction = target;
             UpdateOverallProductionDisplay();
-            await SaveAppConfigAsync();
+            await SaveRuntimeConfigAsync();
         }
 
         private sealed class ChannelInfoWidgets
@@ -2249,6 +2311,7 @@ namespace LumbarMassageTest.UserControls
             {
                 TestStage.Standby => "待机检查",
                 TestStage.ScanBarcode => "扫码",
+                TestStage.StartTest => "启动测试",
                 TestStage.HighPressureInflate => "高压充气",
                 TestStage.HighPressureStabilize => "高压静置等待",
                 TestStage.HighPressureLeakCheck => "压差测算",

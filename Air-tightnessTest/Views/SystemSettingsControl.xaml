@@ -114,7 +114,7 @@
                 </Grid>
             </GroupBox>
 
-            <GroupBox Header="串口配置" FontSize="20" Grid.Row="2" Grid.ColumnSpan="2" Margin="0,20,0,0">
+            <GroupBox Header="串口配置" FontSize="20" Grid.Row="2" Grid.Column="0" Margin="0,20,20,0">
                 <UniformGrid Columns="1" Margin="20">
                     <StackPanel Margin="0,0,20,0" Visibility="Collapsed">
                         <TextBlock Text="设备1（报文通讯）" FontSize="16" FontWeight="Bold" Margin="0,0,0,12" />
@@ -149,7 +149,7 @@
                     </StackPanel>
 
                     <StackPanel Margin="20,0,0,0">
-                        <TextBlock Text="设备2（模拟量IO模块）" FontSize="16" FontWeight="Bold" Margin="0,0,0,12" />
+                        <TextBlock Text="模拟量IO模块" FontSize="16" FontWeight="Bold" Margin="0,0,0,12" />
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -228,6 +228,46 @@
                         <Button x:Name="BtnReloadConfig" Content="重新加载" Width="120" Height="36" FontSize="16" Click="BtnReloadConfig_Click" />
                     </StackPanel>
                 </Grid>
+            </GroupBox>
+
+            <GroupBox Header="压力变送器零点校正" FontSize="20" Grid.Row="2" Grid.Column="1" Margin="20,20,0,0">
+                <UniformGrid Columns="4" Margin="20">
+                    <StackPanel x:Name="ZeroPanel1" Margin="10">
+                        <TextBlock Text="通道1 零点原始值(3800-4100)" FontSize="16" FontWeight="Bold" Margin="0,0,0,10" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox x:Name="TxtPressureZeroRaw1" Width="120" Height="36" FontSize="16" Margin="0,0,10,0" VerticalContentAlignment="Center" />
+                            <Button x:Name="BtnAcquirePressureZeroRaw1" Content="一键获取" Tag="1" Width="100" Height="36" FontSize="16" Click="BtnAcquirePressureZeroRaw_Click" />
+                        </StackPanel>
+                        <TextBlock x:Name="TxtPressureZeroRaw1Status" FontSize="13" Margin="0,8,0,0" Foreground="#4C566A" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="ZeroPanel2" Margin="10">
+                        <TextBlock Text="通道2 零点原始值(3800-4100)" FontSize="16" FontWeight="Bold" Margin="0,0,0,10" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox x:Name="TxtPressureZeroRaw2" Width="120" Height="36" FontSize="16" Margin="0,0,10,0" VerticalContentAlignment="Center" />
+                            <Button x:Name="BtnAcquirePressureZeroRaw2" Content="一键获取" Tag="2" Width="100" Height="36" FontSize="16" Click="BtnAcquirePressureZeroRaw_Click" />
+                        </StackPanel>
+                        <TextBlock x:Name="TxtPressureZeroRaw2Status" FontSize="13" Margin="0,8,0,0" Foreground="#4C566A" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="ZeroPanel3" Margin="10">
+                        <TextBlock Text="通道3 零点原始值(3800-4100)" FontSize="16" FontWeight="Bold" Margin="0,0,0,10" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox x:Name="TxtPressureZeroRaw3" Width="120" Height="36" FontSize="16" Margin="0,0,10,0" VerticalContentAlignment="Center" />
+                            <Button x:Name="BtnAcquirePressureZeroRaw3" Content="一键获取" Tag="3" Width="100" Height="36" FontSize="16" Click="BtnAcquirePressureZeroRaw_Click" />
+                        </StackPanel>
+                        <TextBlock x:Name="TxtPressureZeroRaw3Status" FontSize="13" Margin="0,8,0,0" Foreground="#4C566A" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="ZeroPanel4" Margin="10">
+                        <TextBlock Text="通道4 零点原始值(3800-4100)" FontSize="16" FontWeight="Bold" Margin="0,0,0,10" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox x:Name="TxtPressureZeroRaw4" Width="120" Height="36" FontSize="16" Margin="0,0,10,0" VerticalContentAlignment="Center" />
+                            <Button x:Name="BtnAcquirePressureZeroRaw4" Content="一键获取" Tag="4" Width="100" Height="36" FontSize="16" Click="BtnAcquirePressureZeroRaw_Click" />
+                        </StackPanel>
+                        <TextBlock x:Name="TxtPressureZeroRaw4Status" FontSize="13" Margin="0,8,0,0" Foreground="#4C566A" />
+                    </StackPanel>
+                </UniformGrid>
             </GroupBox>
         </Grid>
     </Grid>

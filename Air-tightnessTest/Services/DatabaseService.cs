@@ -16,6 +16,10 @@ namespace LumbarMassageTest.Services
 {
     public class DatabaseService
     {
+        private const string LegacyAppDataFolderName = "LumbarMassageTest";
+        private const string DatabaseFileName = "TestData.db";
+        private static string AppDataFolderName => typeof(DatabaseService).Assembly.GetName().Name ?? "Air-tightnessTest";
+
         private readonly string _connectionString;
         private readonly ILogService _logService;
         private static User _currentUser;
@@ -29,7 +33,8 @@ namespace LumbarMassageTest.Services
         public DatabaseService(ILogService? logService = null)
         {
             _logService = logService ?? LogService.Instance;
-            string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestData.db");
+            string dbPath = ResolveDatabasePath();
+            MigrateLegacyDatabase(dbPath);
             _connectionString = $"Data Source={dbPath}";
 
             if (!File.Exists(dbPath))
@@ -40,6 +45,65 @@ namespace LumbarMassageTest.Services
             else
             {
                 InitializeDatabase();
+            }
+        }
+
+        private static string ResolveDatabasePath()
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if (string.IsNullOrWhiteSpace(localAppData))
+            {
+                return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, DatabaseFileName);
+            }
+
+            var dataFolder = Path.Combine(localAppData, AppDataFolderName, "Data");
+            Directory.CreateDirectory(dataFolder);
+            return Path.Combine(dataFolder, DatabaseFileName);
+        }
+
+        private void MigrateLegacyDatabase(string dbPath)
+        {
+            if (File.Exists(dbPath))
+            {
+                return;
+            }
+
+            foreach (var legacyPath in GetLegacyDatabasePaths())
+            {
+                try
+                {
+                    if (string.Equals(legacyPath, dbPath, StringComparison.OrdinalIgnoreCase) || !File.Exists(legacyPath))
+                    {
+                        continue;
+                    }
+
+                    var targetDirectory = Path.GetDirectoryName(dbPath);
+                    if (!string.IsNullOrWhiteSpace(targetDirectory))
+                    {
+                        Directory.CreateDirectory(targetDirectory);
+                    }
+
+                    File.Copy(legacyPath, dbPath);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logService.LogError($"迁移旧报表数据库失败: {legacyPath}", ex);
+                }
+            }
+        }
+
+        private static IEnumerable<string> GetLegacyDatabasePaths()
+        {
+            var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            yield return Path.Combine(baseDirectory, DatabaseFileName);
+            yield return Path.Combine(baseDirectory, "Data", DatabaseFileName);
+
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if (!string.IsNullOrWhiteSpace(localAppData))
+            {
+                yield return Path.Combine(localAppData, LegacyAppDataFolderName, "Data", DatabaseFileName);
+                yield return Path.Combine(localAppData, LegacyAppDataFolderName, DatabaseFileName);
             }
         }
 
@@ -558,11 +622,28 @@ namespace LumbarMassageTest.Services
 
             record.LumbarCurrents = lumbarCurrents;
             record.MassageCurrents = massageCurrents;
-
+            record.AirLeakResults = ParseAirLeakResults(reader["AirLeakResults"]?.ToString());
             (record.LumbarAverageCurrent, record.LumbarMaxCurrent) = CalculateCurrentMetrics(lumbarCurrents);
             (record.MassageAverageCurrent, record.MassageMaxCurrent) = CalculateCurrentMetrics(massageCurrents);
 
             return record;
+        }
+
+        private static List<AirLeakPressureResult> ParseAirLeakResults(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return new List<AirLeakPressureResult>();
+            }
+
+            try
+            {
+                return JsonConvert.DeserializeObject<List<AirLeakPressureResult>>(json) ?? new List<AirLeakPressureResult>();
+            }
+            catch
+            {
+                return new List<AirLeakPressureResult>();
+            }
         }
 
         private static List<double> ParseCurrents(string currents)

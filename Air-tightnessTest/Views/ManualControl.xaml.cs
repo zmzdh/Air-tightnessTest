@@ -27,6 +27,9 @@ namespace LumbarMassageTest.UserControls
         private byte[] _pendingContinuousPayload = Array.Empty<byte>();
         private ProductModel? _currentModel;
         private readonly Dictionary<int, TextBlock> _manualPressureTexts = new();
+        private readonly PressureModbusService? _pressureService;
+        private readonly System.Windows.Threading.DispatcherTimer _pressureTimer;
+        private bool _isReadingPressure;
 
         private readonly Dictionary<string, string> _controlAddressMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -39,16 +42,23 @@ namespace LumbarMassageTest.UserControls
             new Dictionary<string, bool>();
 
         public ManualControl(CommService commService)
-            : this(commService, LogService.Instance)
+            : this(commService, null, LogService.Instance)
         {
         }
 
         public ManualControl(CommService commService, ILogService? logService)
+            : this(commService, null, logService)
+        {
+        }
+
+        public ManualControl(CommService commService, PressureModbusService? pressureService, ILogService? logService)
         {
             InitializeComponent();
             AddValveControlGroups();
             SimplifyManualDebugLayout();
+            AddIndicatorLightControlGroups();
             _commService = commService ?? throw new ArgumentNullException(nameof(commService));
+            _pressureService = pressureService;
             _logService = logService ?? LogService.Instance;
             _mainWindow = (MainWindow)Application.Current.MainWindow;
 
@@ -59,7 +69,12 @@ namespace LumbarMassageTest.UserControls
             };
             _continuousSendTimer.Tick += ContinuousSendTimer_Tick;
 
-            InitializeMassageStatus();
+            _pressureTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(500)
+            };
+            _pressureTimer.Tick += PressureTimer_Tick;
+
             InitializeControlStates();
             ApplyManualConfig(_mainWindow?.GetCurrentModelForManual());
 
@@ -83,11 +98,13 @@ namespace LumbarMassageTest.UserControls
             ApplyChannelVisibility();
             ApplyManualConfig(_mainWindow?.GetCurrentModelForManual());
             UpdateWithPLCData(_mainWindow?.GetCurrentPLCData());
+            StartPressurePolling();
         }
 
         private void ManualControl_Unloaded(object sender, RoutedEventArgs e)
         {
             _continuousSendTimer.Stop();
+            _pressureTimer.Stop();
             RemoveMessageReceivedSubscription();
         }
 
@@ -102,12 +119,209 @@ namespace LumbarMassageTest.UserControls
             _commService.MessageReceived -= CommService_MessageReceived;
         }
 
+        private void StartPressurePolling()
+        {
+            if (_pressureTimer == null)
+            {
+                return;
+            }
+
+            _pressureTimer.Stop();
+            _pressureTimer.Start();
+            _ = PollPressureAsync();
+        }
+
+        private void PressureTimer_Tick(object? sender, EventArgs e)
+        {
+            _ = PollPressureAsync();
+        }
+
+        private async Task PollPressureAsync()
+        {
+            if (_isReadingPressure || _pressureService == null)
+            {
+                return;
+            }
+
+            _isReadingPressure = true;
+            try
+            {
+                int channelCount = _mainWindow?.GetConfiguredChannelCountForUi() ?? 4;
+                for (int channel = 1; channel <= channelCount; channel++)
+                {
+                    if (!_manualPressureTexts.TryGetValue(channel, out var pressureText))
+                    {
+                        continue;
+                    }
+
+                    PressureChannelConfig? pressureConfig = GetPressureConfig(channel);
+
+                    TextBlock? currentText = channel switch
+                    {
+                        1 => TxtCh1Current,
+                        2 => TxtCh2Current,
+                        3 => TxtCh3Current,
+                        4 => TxtCh4Current,
+                        _ => null
+                    };
+
+                    try
+                    {
+                        double pressure = await _pressureService.ReadPressureKPaAsync(
+                            channel,
+                            pressureConfig,
+                            System.Threading.CancellationToken.None);
+
+                        pressureText.Text = $"实时压力: {pressure:F2} KPa";
+                        if (currentText != null)
+                        {
+                            currentText.Text = $"{pressure:F2} KPa";
+                        }
+                    }
+                    catch
+                    {
+                        pressureText.Text = "实时压力: -- KPa";
+                        if (currentText != null)
+                        {
+                            currentText.Text = "-- KPa";
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                _isReadingPressure = false;
+            }
+        }
+
+        private PressureChannelConfig? GetPressureConfig(int channel)
+        {
+            return channel switch
+            {
+                1 => _currentModel?.Channel1Config?.PressureConfig,
+                2 => _currentModel?.Channel2Config?.PressureConfig,
+                3 => _currentModel?.Channel3Config?.PressureConfig,
+                4 => _currentModel?.Channel4Config?.PressureConfig,
+                _ => null
+            };
+        }
+
+        private async void BtnSharedPressureSetpoint_Click(object sender, RoutedEventArgs e)
+        {
+            await WriteGlobalPressureSetpointAsync(TxtSharedPressureSetpoint, TxtSharedPressureSetpointStatus);
+        }
+
+        private async Task WriteGlobalPressureSetpointAsync(TextBox input, TextBlock status)
+        {
+            if (_pressureService == null)
+            {
+                status.Text = "压力服务未连接";
+                status.Foreground = Brushes.Firebrick;
+                return;
+            }
+
+            if (!double.TryParse(
+                    input.Text.Trim(),
+                    NumberStyles.Float,
+                    CultureInfo.InvariantCulture,
+                    out double pressure)
+                || double.IsNaN(pressure)
+                || double.IsInfinity(pressure))
+            {
+                status.Text = "设定值无效";
+                status.Foreground = Brushes.Firebrick;
+                return;
+            }
+
+            try
+            {
+                await _pressureService.WriteOutputPressureAsync(pressure, System.Threading.CancellationToken.None);
+
+                status.Text = $"已设定 {pressure:F2} KPa";
+                status.Foreground = Brushes.ForestGreen;
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError("手动调试压力设定失败", ex);
+                status.Text = "设定失败";
+                status.Foreground = Brushes.Firebrick;
+            }
+        }
+
         private void AddValveControlGroups()
         {
             AddValveControlGroup(Ch1ControlPanel, "Ch1");
             AddValveControlGroup(Ch2ControlPanel, "Ch2");
             AddValveControlGroup(Ch3ControlPanel, "Ch3");
             AddValveControlGroup(Ch4ControlPanel, "Ch4");
+        }
+
+        private void AddIndicatorLightControlGroups()
+        {
+            AddIndicatorLightControlGroup(Ch1ControlPanel, "Ch1");
+            AddIndicatorLightControlGroup(Ch2ControlPanel, "Ch2");
+            AddIndicatorLightControlGroup(Ch3ControlPanel, "Ch3");
+            AddIndicatorLightControlGroup(Ch4ControlPanel, "Ch4");
+        }
+
+        private void AddIndicatorLightControlGroup(Border channelPanel, string prefix)
+        {
+            if (channelPanel.Child is not StackPanel stackPanel)
+            {
+                return;
+            }
+
+            var group = new GroupBox
+            {
+                Header = "指示灯测试",
+                Margin = new Thickness(0, 0, 0, 15)
+            };
+
+            var grid = new UniformGrid
+            {
+                Columns = 3,
+                Margin = new Thickness(0, 5, 0, 5),
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+
+            AddLightButton(grid, prefix, "FullTestLight", "运行指示灯");
+            AddLightButton(grid, prefix, "OKLight", "测试OK灯");
+            AddLightButton(grid, prefix, "NGLight", "测试NG灯");
+
+            group.Content = grid;
+            stackPanel.Children.Insert(Math.Min(5, stackPanel.Children.Count), group);
+        }
+
+        private void AddLightButton(Panel parent, string prefix, string suffix, string label)
+        {
+            string controlKey = $"{prefix}{suffix}";
+            var row = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(5),
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+
+            var button = new Button
+            {
+                Name = controlKey,
+                Content = label,
+                Style = TryFindResource("ToggleButtonStyle") as Style
+            };
+            button.Click += async (_, _) => await ToggleControlAsync(controlKey);
+
+            var indicator = new Ellipse
+            {
+                Name = $"{controlKey}Indicator",
+                Style = TryFindResource("StatusIndicatorStyle") as Style,
+                Fill = Brushes.Gray,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            RegisterControlName(indicator.Name, indicator);
+            row.Children.Add(button);
+            row.Children.Add(indicator);
+            parent.Children.Add(row);
         }
 
         private void AddValveControlGroup(Border channelPanel, string prefix)
@@ -134,6 +348,7 @@ namespace LumbarMassageTest.UserControls
             AddValveButton(grid, prefix, "HighPressureExhaustValve", "高压排气阀");
             AddValveButton(grid, prefix, "LowPressureInletValve", "低压进气阀");
             AddValveButton(grid, prefix, "LowPressureExhaustValve", "低压排气阀");
+            AddValveButton(grid, prefix, "PressureTransducerIsolationValve", "变送器隔离阀");
 
             group.Content = grid;
             stackPanel.Children.Insert(Math.Min(4, stackPanel.Children.Count), group);
@@ -239,17 +454,9 @@ namespace LumbarMassageTest.UserControls
                 return;
             }
 
-            foreach (UIElement child in rootGrid.Children.OfType<UIElement>().ToList())
+            if (CommunicationTestPanel != null)
             {
-                if (Grid.GetColumn(child) == 4)
-                {
-                    rootGrid.Children.Remove(child);
-                }
-            }
-
-            if (Col5 != null)
-            {
-                Col5.Width = new GridLength(0);
+                rootGrid.Children.Remove(CommunicationTestPanel);
             }
         }
         private void InitializeReceiveData()
@@ -278,6 +485,7 @@ namespace LumbarMassageTest.UserControls
             _controlStates["Ch1HighPressureExhaustValve"] = false;
             _controlStates["Ch1LowPressureInletValve"] = false;
             _controlStates["Ch1LowPressureExhaustValve"] = false;
+            _controlStates["Ch1PressureTransducerIsolationValve"] = false;
             _controlStates["Ch1FullTestLight"] = false;
             _controlStates["Ch1MassageLight"] = false;
             _controlStates["Ch1SideWingLight"] = false;
@@ -297,6 +505,7 @@ namespace LumbarMassageTest.UserControls
             _controlStates["Ch2HighPressureExhaustValve"] = false;
             _controlStates["Ch2LowPressureInletValve"] = false;
             _controlStates["Ch2LowPressureExhaustValve"] = false;
+            _controlStates["Ch2PressureTransducerIsolationValve"] = false;
             _controlStates["Ch2FullTestLight"] = false;
             _controlStates["Ch2MassageLight"] = false;
             _controlStates["Ch2SideWingLight"] = false;
@@ -316,6 +525,7 @@ namespace LumbarMassageTest.UserControls
             _controlStates["Ch3HighPressureExhaustValve"] = false;
             _controlStates["Ch3LowPressureInletValve"] = false;
             _controlStates["Ch3LowPressureExhaustValve"] = false;
+            _controlStates["Ch3PressureTransducerIsolationValve"] = false;
             _controlStates["Ch3FullTestLight"] = false;
             _controlStates["Ch3MassageLight"] = false;
             _controlStates["Ch3SideWingLight"] = false;
@@ -335,6 +545,7 @@ namespace LumbarMassageTest.UserControls
             _controlStates["Ch4HighPressureExhaustValve"] = false;
             _controlStates["Ch4LowPressureInletValve"] = false;
             _controlStates["Ch4LowPressureExhaustValve"] = false;
+            _controlStates["Ch4PressureTransducerIsolationValve"] = false;
             _controlStates["Ch4FullTestLight"] = false;
             _controlStates["Ch4MassageLight"] = false;
             _controlStates["Ch4SideWingLight"] = false;
@@ -380,6 +591,7 @@ namespace LumbarMassageTest.UserControls
             AddControlAddress($"{prefix}HighPressureExhaustValve", FirstNonEmpty(manual.HighPressureExhaustValveAddress, manual.DownInflateUpDeflateAddress));
             AddControlAddress($"{prefix}LowPressureInletValve", FirstNonEmpty(manual.LowPressureInletValveAddress, manual.BothInflateAddress));
             AddControlAddress($"{prefix}LowPressureExhaustValve", FirstNonEmpty(manual.LowPressureExhaustValveAddress, manual.BothDeflateAddress));
+            AddControlAddress($"{prefix}PressureTransducerIsolationValve", manual.PressureTransducerIsolationValveAddress);
             AddControlAddress($"{prefix}FullTestLight", manual.FullTestLightAddress);
             AddControlAddress($"{prefix}MassageLight", manual.MassageLightAddress);
             AddControlAddress($"{prefix}SideWingLight", manual.SideWingLightAddress);
@@ -512,7 +724,7 @@ namespace LumbarMassageTest.UserControls
                 Col4.Width = new GridLength(1, GridUnitType.Star);
             }
 
-            Col5.Width = new GridLength(0);
+            Col5.Width = new GridLength(1, GridUnitType.Star);
         }
 
         private void UpdateChannelStatus(int channel, ChannelData channelData)
@@ -597,12 +809,15 @@ namespace LumbarMassageTest.UserControls
                 heightText.Text = $"{actualHeight:F2} mm";
             }
 
-            if (currentText != null)
+            if (_pressureService == null)
             {
-                currentText.Text = $"{channelData.CurrentValue:F2} KPa";
-                if (_manualPressureTexts.TryGetValue(channel, out var pressureText))
+                if (currentText != null)
                 {
-                    pressureText.Text = $"实时压力: {channelData.CurrentValue:F2} KPa";
+                    currentText.Text = $"{channelData.CurrentValue:F2} KPa";
+                    if (_manualPressureTexts.TryGetValue(channel, out var pressureText))
+                    {
+                        pressureText.Text = $"实时压力: {channelData.CurrentValue:F2} KPa";
+                    }
                 }
             }
         }
@@ -633,6 +848,11 @@ namespace LumbarMassageTest.UserControls
 
         private void UpdateMassageStatus(ChannelData ch1, ChannelData ch2, ChannelData ch3, ChannelData ch4)
         {
+            if (_massageIndicators.Count == 0)
+            {
+                return;
+            }
+
             try
             {
                 // 通道1按摩点更新
@@ -752,6 +972,8 @@ namespace LumbarMassageTest.UserControls
                 _controlStates["Ch1LowPressureInletValve"] = ch1.LowPressureInletValve;
                 UpdateControlIndicator("Ch1LowPressureExhaustValveIndicator", ch1.LowPressureExhaustValve);
                 _controlStates["Ch1LowPressureExhaustValve"] = ch1.LowPressureExhaustValve;
+                UpdateControlIndicator("Ch1PressureTransducerIsolationValveIndicator", ch1.PressureTransducerIsolationValve);
+                _controlStates["Ch1PressureTransducerIsolationValve"] = ch1.PressureTransducerIsolationValve;
             }
 
             if (ch2 != null)
@@ -793,6 +1015,8 @@ namespace LumbarMassageTest.UserControls
                 _controlStates["Ch2LowPressureInletValve"] = ch2.LowPressureInletValve;
                 UpdateControlIndicator("Ch2LowPressureExhaustValveIndicator", ch2.LowPressureExhaustValve);
                 _controlStates["Ch2LowPressureExhaustValve"] = ch2.LowPressureExhaustValve;
+                UpdateControlIndicator("Ch2PressureTransducerIsolationValveIndicator", ch2.PressureTransducerIsolationValve);
+                _controlStates["Ch2PressureTransducerIsolationValve"] = ch2.PressureTransducerIsolationValve;
             }
 
             if (ch3 != null)
@@ -833,6 +1057,8 @@ namespace LumbarMassageTest.UserControls
                 _controlStates["Ch3LowPressureInletValve"] = ch3.LowPressureInletValve;
                 UpdateControlIndicator("Ch3LowPressureExhaustValveIndicator", ch3.LowPressureExhaustValve);
                 _controlStates["Ch3LowPressureExhaustValve"] = ch3.LowPressureExhaustValve;
+                UpdateControlIndicator("Ch3PressureTransducerIsolationValveIndicator", ch3.PressureTransducerIsolationValve);
+                _controlStates["Ch3PressureTransducerIsolationValve"] = ch3.PressureTransducerIsolationValve;
             }
 
             if (ch4 != null)
@@ -873,6 +1099,8 @@ namespace LumbarMassageTest.UserControls
                 _controlStates["Ch4LowPressureInletValve"] = ch4.LowPressureInletValve;
                 UpdateControlIndicator("Ch4LowPressureExhaustValveIndicator", ch4.LowPressureExhaustValve);
                 _controlStates["Ch4LowPressureExhaustValve"] = ch4.LowPressureExhaustValve;
+                UpdateControlIndicator("Ch4PressureTransducerIsolationValveIndicator", ch4.PressureTransducerIsolationValve);
+                _controlStates["Ch4PressureTransducerIsolationValve"] = ch4.PressureTransducerIsolationValve;
             }
         }
 
@@ -917,84 +1145,6 @@ namespace LumbarMassageTest.UserControls
         }
 
         private const int MaxMassagePointCount = 32;
-
-        private void InitializeMassageStatus()
-        {
-            try
-            {
-                Ch1MassageStatusPanel.Children.Clear();
-                Ch2MassageStatusPanel.Children.Clear();
-                Ch3MassageStatusPanel.Children.Clear();
-                Ch4MassageStatusPanel.Children.Clear();
-                _massageIndicators.Clear();
-
-                // 创建通道1按摩点1-32的状态显示
-                for (int i = 1; i <= MaxMassagePointCount; i++)
-                {
-                    AddMassagePointToPanel(Ch1MassageStatusPanel, i, 1);
-                    AddMassagePointToPanel(Ch2MassageStatusPanel, i, 2);
-                    AddMassagePointToPanel(Ch3MassageStatusPanel, i, 3);
-                    AddMassagePointToPanel(Ch4MassageStatusPanel, i, 4);
-                }
-
-                // 初始设置为灰色
-                foreach (var indicator in _massageIndicators.Values)
-                {
-                    indicator.Fill = Brushes.Gray;
-                }
-
-                _logService.LogInfo($"初始化完成，共创建 {_massageIndicators.Count} 个按摩点指示器");
-            }
-            catch (Exception ex)
-            {
-                _logService.LogError("初始化按摩状态错误", ex);
-            }
-        }
-
-        private void AddMassagePointToPanel(StackPanel panel, int pointNumber, int channel)
-        {
-            var stackPanel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Margin = new Thickness(0, 2, 0, 2)
-            };
-
-            stackPanel.Children.Add(new TextBlock
-            {
-                Text = $"按摩点{pointNumber}:",
-                Width = 70,
-                VerticalAlignment = VerticalAlignment.Center
-            });
-
-            var indicator = new Ellipse
-            {
-                Width = 15,
-                Height = 15,
-                Fill = Brushes.Gray,
-                Margin = new Thickness(5, 0, 5, 0)
-            };
-
-            // 为指示器创建唯一名称并存储
-            string indicatorName = $"Ch{channel}MassagePoint{pointNumber}Indicator";
-            indicator.Name = indicatorName;
-            _massageIndicators[indicatorName] = indicator;
-
-            stackPanel.Children.Add(indicator);
-
-            var durationText = new TextBlock
-            {
-                Text = "0ms",
-                Margin = new Thickness(10, 0, 10, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                Tag = $"duration_{channel}_{pointNumber}"
-            };
-            stackPanel.Children.Add(durationText);
-
-            panel.Children.Add(stackPanel);
-
-            // 注册名称以便后续查找
-            this.RegisterName(indicatorName, indicator);
-        }
 
         private string FormatCommValues(IReadOnlyList<byte> values)
         {

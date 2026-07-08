@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using LumbarMassageTest.Licensing;
@@ -8,20 +9,23 @@ namespace LumbarMassageTest.Services
     public class LicenseService
     {
         private const string ProductCode = "LumbarMassageTest";
+        private const string LegacyAppDataFolderName = "LumbarMassageTest";
+        private static string AppDataFolderName => typeof(LicenseService).Assembly.GetName().Name ?? "Air-tightnessTest";
 
         private readonly ILogService _logService;
         private readonly string _requestPath;
         private readonly string _licensePath;
         private readonly string _publicKeyPem;
-        private readonly string _publicKeyPath;
 
         public LicenseService(ILogService logService)
         {
             _logService = logService;
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            _requestPath = Path.Combine(baseDir, "Data", "request.dat");
-            _licensePath = Path.Combine(baseDir, "Data", "license.lic");
-            (_publicKeyPem, _publicKeyPath) = LoadPublicKey(baseDir);
+            var licensingRoot = ResolveLicensingRoot();
+            _requestPath = Path.Combine(licensingRoot, "request.dat");
+            _licensePath = Path.Combine(licensingRoot, "license.lic");
+            MigrateLegacyLicenseFiles(baseDir, licensingRoot);
+            _publicKeyPem = LoadEmbeddedPublicKey();
         }
 
         public string RequestFilePath => _requestPath;
@@ -56,7 +60,7 @@ namespace LumbarMassageTest.Services
 
                 if (string.IsNullOrWhiteSpace(_publicKeyPem))
                 {
-                    reason = $"未找到公钥文件或公钥为空：{_publicKeyPath}";
+                    reason = "未找到内嵌公钥。";
                     return false;
                 }
 
@@ -172,15 +176,61 @@ namespace LumbarMassageTest.Services
             }
         }
 
-        private static (string publicKeyPem, string keyPath) LoadPublicKey(string baseDir)
+        private static string LoadEmbeddedPublicKey()
         {
-            var keyPath = Path.Combine(baseDir, "Licensing", "Keys", "public-key.pem");
-            if (!File.Exists(keyPath))
+            using var keyStream = typeof(LicenseService).Assembly.GetManifestResourceStream("LumbarMassageTest.Licensing.public-key.pem");
+            if (keyStream is not null)
             {
-                return (string.Empty, keyPath);
+                using var reader = new StreamReader(keyStream, Encoding.UTF8);
+                return reader.ReadToEnd();
             }
 
-            return (File.ReadAllText(keyPath, Encoding.UTF8), keyPath);
+            return string.Empty;
+        }
+
+        private static string ResolveLicensingRoot()
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if (string.IsNullOrWhiteSpace(localAppData))
+            {
+                localAppData = AppDomain.CurrentDomain.BaseDirectory;
+            }
+
+            return Path.Combine(localAppData, AppDataFolderName, "Licensing");
+        }
+
+        private static void MigrateLegacyLicenseFiles(string baseDir, string targetRoot)
+        {
+            Directory.CreateDirectory(targetRoot);
+
+            foreach (var legacyPath in GetLegacyLicensePaths(baseDir))
+            {
+                if (!File.Exists(legacyPath))
+                {
+                    continue;
+                }
+
+                var targetPath = Path.Combine(targetRoot, Path.GetFileName(legacyPath));
+                if (!File.Exists(targetPath))
+                {
+                    File.Copy(legacyPath, targetPath, false);
+                }
+            }
+        }
+
+        private static IEnumerable<string> GetLegacyLicensePaths(string baseDir)
+        {
+            yield return Path.Combine(baseDir, "Data", "request.dat");
+            yield return Path.Combine(baseDir, "Data", "license.lic");
+
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if (!string.IsNullOrWhiteSpace(localAppData))
+            {
+                yield return Path.Combine(localAppData, LegacyAppDataFolderName, "Licensing", "request.dat");
+                yield return Path.Combine(localAppData, LegacyAppDataFolderName, "Licensing", "license.lic");
+                yield return Path.Combine(localAppData, LegacyAppDataFolderName, "Data", "request.dat");
+                yield return Path.Combine(localAppData, LegacyAppDataFolderName, "Data", "license.lic");
+            }
         }
 
         private static bool ValidateLegacyLicense(LegacyLicensePayload payload, out string reason)

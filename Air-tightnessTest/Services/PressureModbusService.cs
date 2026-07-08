@@ -7,15 +7,18 @@ namespace LumbarMassageTest.Services
 {
     public sealed class PressureModbusService : IDisposable
     {
-        private const int MinRaw = 0;
+        private const int MinRaw = 4000;
         private const int MaxRaw = 20000;
+        private const int DefaultInputRegisterAddress = 40097;
+        private const int DefaultOutputRegisterAddress = 40023;
         private readonly ModbusRtuClient _client;
         private readonly ILogService _logService;
         private byte _stationId = 1;
-        private int _inputStartAddress = 40097;
-        private int _outputStartAddress = 40023;
+        private int _inputStartAddress = DefaultInputRegisterAddress;
+        private int _outputStartAddress = DefaultOutputRegisterAddress;
         private double _inputFullScaleKPa = 100;
         private double _outputFullScaleKPa = 100;
+        private readonly int[] _channelZeroRawOverrides = { -1, -1, -1, -1 };
 
         public PressureModbusService(SerialPortConfig config, ILogService? logService = null)
         {
@@ -23,7 +26,7 @@ namespace LumbarMassageTest.Services
             _client = new ModbusRtuClient(config ?? SerialPortConfig.CreateDefaultDevice2(), _logService);
         }
 
-        public void UpdateConfig(AppConfig config)
+        public void UpdateConfig(SystemConfig config)
         {
             if (config == null)
             {
@@ -33,10 +36,14 @@ namespace LumbarMassageTest.Services
             _stationId = config.PressureModuleStationId is >= 1 and <= 247
                 ? config.PressureModuleStationId
                 : (byte)1;
-            _inputStartAddress = config.PressureInputStartAddress > 0 ? config.PressureInputStartAddress : 40097;
-            _outputStartAddress = config.PressureOutputStartAddress > 0 ? config.PressureOutputStartAddress : 40023;
+            _inputStartAddress = config.PressureInputStartAddress > 0 ? config.PressureInputStartAddress : DefaultInputRegisterAddress;
+            _outputStartAddress = config.PressureOutputStartAddress > 0 ? config.PressureOutputStartAddress : DefaultOutputRegisterAddress;
             _inputFullScaleKPa = NormalizeRange(config.PressureInputFullScaleKPa, 50, 200, 100);
             _outputFullScaleKPa = NormalizeRange(config.PressureOutputFullScaleKPa, 100, 200, 100);
+            _channelZeroRawOverrides[0] = NormalizeZeroRaw(config.PressureZeroRaw1);
+            _channelZeroRawOverrides[1] = NormalizeZeroRaw(config.PressureZeroRaw2);
+            _channelZeroRawOverrides[2] = NormalizeZeroRaw(config.PressureZeroRaw3);
+            _channelZeroRawOverrides[3] = NormalizeZeroRaw(config.PressureZeroRaw4);
             _client.UpdateConfig(config.SerialDevice2 ?? SerialPortConfig.CreateDefaultDevice2());
         }
 
@@ -49,24 +56,33 @@ namespace LumbarMassageTest.Services
         {
             ValidateChannel(channel);
             channelConfig ??= BuildDefaultChannelConfig(channel);
-            ushort address = ToZeroBasedRegisterAddress(channelConfig.InputRegisterAddress > 0
-                ? channelConfig.InputRegisterAddress
-                : _inputStartAddress + channel - 1);
+            int raw = await ReadRawValueAsync(channel, channelConfig, cancellationToken).ConfigureAwait(false);
+            return ConvertRawToPressure(raw, channelConfig, _inputFullScaleKPa, _channelZeroRawOverrides[channel - 1]);
+        }
 
+        public async Task<int> ReadRawValueAsync(int channel, PressureChannelConfig? channelConfig, CancellationToken cancellationToken)
+        {
+            ValidateChannel(channel);
+            channelConfig ??= BuildDefaultChannelConfig(channel);
+            ushort address = ToZeroBasedRegisterAddress(ResolveInputRegisterAddress(channel, channelConfig));
             ushort[] registers = await _client.ReadHoldingRegistersAsync(_stationId, address, 1, cancellationToken).ConfigureAwait(false);
-            int raw = registers.Length > 0 ? registers[0] : 0;
-            return ConvertRawToPressure(raw, channelConfig, _inputFullScaleKPa);
+            return registers.Length > 0 ? registers[0] : 0;
         }
 
         public async Task WriteOutputPressureAsync(int channel, double pressureKPa, PressureChannelConfig? channelConfig, CancellationToken cancellationToken)
         {
             ValidateChannel(channel);
             channelConfig ??= BuildDefaultChannelConfig(channel);
-            ushort address = ToZeroBasedRegisterAddress(channelConfig.OutputRegisterAddress > 0
-                ? channelConfig.OutputRegisterAddress
-                : _outputStartAddress + channel - 1);
+            ushort address = ToZeroBasedRegisterAddress(ResolveOutputRegisterAddress(channel, channelConfig));
 
             ushort raw = ConvertPressureToOutputRaw(pressureKPa, channelConfig, _outputFullScaleKPa);
+            await _client.WriteSingleRegisterAsync(_stationId, address, raw, cancellationToken).ConfigureAwait(false);
+        }
+
+        public async Task WriteOutputPressureAsync(double pressureKPa, CancellationToken cancellationToken)
+        {
+            ushort raw = ConvertPressureToOutputRaw(pressureKPa, BuildDefaultChannelConfig(1), _outputFullScaleKPa);
+            ushort address = ToZeroBasedRegisterAddress(_outputStartAddress);
             await _client.WriteSingleRegisterAsync(_stationId, address, raw, cancellationToken).ConfigureAwait(false);
         }
 
@@ -79,16 +95,32 @@ namespace LumbarMassageTest.Services
         {
             return new PressureChannelConfig
             {
-                InputRegisterAddress = 40097 + channel - 1,
-                OutputRegisterAddress = 40023 + channel - 1,
+                InputRegisterAddress = DefaultInputRegisterAddress + channel - 1,
+                OutputRegisterAddress = DefaultOutputRegisterAddress + channel - 1,
                 ZeroRaw = MinRaw,
                 FullScaleRaw = MaxRaw
             };
         }
 
-        private static double ConvertRawToPressure(int raw, PressureChannelConfig config, double defaultFullScaleKPa)
+        private int ResolveInputRegisterAddress(int channel, PressureChannelConfig config)
         {
-            int zeroRaw = config.ZeroRaw;
+            return config.InputRegisterAddress > 0
+                && config.InputRegisterAddress != DefaultInputRegisterAddress
+                ? config.InputRegisterAddress
+                : _inputStartAddress + channel - 1;
+        }
+
+        private int ResolveOutputRegisterAddress(int channel, PressureChannelConfig config)
+        {
+            return config.OutputRegisterAddress > 0
+                && config.OutputRegisterAddress != DefaultOutputRegisterAddress
+                ? config.OutputRegisterAddress
+                : _outputStartAddress + channel - 1;
+        }
+
+        private static double ConvertRawToPressure(int raw, PressureChannelConfig config, double defaultFullScaleKPa, int zeroRawOverride = -1)
+        {
+            int zeroRaw = zeroRawOverride >= 0 ? zeroRawOverride : NormalizeConfigZeroRaw(config.ZeroRaw);
             int fullScaleRaw = config.FullScaleRaw > zeroRaw ? config.FullScaleRaw : MaxRaw;
             double zeroPressure = config.PressureZeroKPa;
             double fullScalePressure = config.PressureFullScaleKPa > zeroPressure
@@ -99,6 +131,16 @@ namespace LumbarMassageTest.Services
             double ratio = (raw - zeroRaw) / (double)(fullScaleRaw - zeroRaw);
             ratio = Math.Clamp(ratio, 0, 1);
             return zeroPressure + ratio * (fullScalePressure - zeroPressure);
+        }
+
+        private static int NormalizeZeroRaw(int value)
+        {
+            return value >= 3800 && value <= 4100 ? value : -1;
+        }
+
+        private static int NormalizeConfigZeroRaw(int value)
+        {
+            return value >= 3800 && value <= 4100 ? value : MinRaw;
         }
 
         private static ushort ConvertPressureToOutputRaw(double pressureKPa, PressureChannelConfig config, double defaultFullScaleKPa)

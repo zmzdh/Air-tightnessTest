@@ -42,7 +42,7 @@ namespace LumbarMassageTest.Services
 
         public MesIntegrationMode CurrentMode { get; private set; } = MesIntegrationMode.HttpPush;
 
-        public async Task ApplyConfigurationAsync(AppConfig config, CancellationToken cancellationToken = default)
+        public async Task ApplyConfigurationAsync(SystemConfig config, CancellationToken cancellationToken = default)
         {
             if (config == null)
             {

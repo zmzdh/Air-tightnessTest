@@ -11,10 +11,18 @@ namespace LumbarMassageTest.Services
 {
     public class ConfigService
     {
+        private const string LegacyAppDataFolderName = "LumbarMassageTest";
+        private static string AppDataFolderName => typeof(ConfigService).Assembly.GetName().Name ?? "Air-tightnessTest";
+
         private readonly string _configPath;
         private readonly string _modelsPath;
         private readonly string _legacyConfigPath;
         private readonly string _legacyModelsPath;
+        private readonly string _legacyAppDataConfigPath;
+        private readonly string _legacyAppDataModelsPath;
+        private readonly string _systemConfigFile;
+        private readonly string _runtimeConfigFile;
+        private readonly string _appConfigFile;
         private readonly ILogService _logService;
 
         public ConfigService(ILogService? logService = null)
@@ -24,6 +32,11 @@ namespace LumbarMassageTest.Services
             _modelsPath = Path.Combine(_configPath, "Models");
             _legacyConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config");
             _legacyModelsPath = Path.Combine(_legacyConfigPath, "Models");
+            _legacyAppDataConfigPath = ResolveLegacyConfigRoot();
+            _legacyAppDataModelsPath = Path.Combine(_legacyAppDataConfigPath, "Models");
+            _systemConfigFile = Path.Combine(_configPath, "system.json");
+            _runtimeConfigFile = Path.Combine(_configPath, "runtime.json");
+            _appConfigFile = Path.Combine(_configPath, "app.json");
 
             if (!Directory.Exists(_configPath))
                 Directory.CreateDirectory(_configPath);
@@ -41,36 +54,52 @@ namespace LumbarMassageTest.Services
                 return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config");
             }
 
-            return Path.Combine(localAppData, "LumbarMassageTest", "Config");
+            return Path.Combine(localAppData, AppDataFolderName, "Config");
+        }
+
+        private static string ResolveLegacyConfigRoot()
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if (string.IsNullOrWhiteSpace(localAppData))
+            {
+                return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config");
+            }
+
+            return Path.Combine(localAppData, LegacyAppDataFolderName, "Config");
         }
 
         private void MigrateLegacyConfig()
         {
+            MigrateLegacyConfigRoot(_legacyAppDataConfigPath, _legacyAppDataModelsPath);
+            MigrateLegacyConfigRoot(_legacyConfigPath, _legacyModelsPath);
+        }
+
+        private void MigrateLegacyConfigRoot(string legacyConfigPath, string legacyModelsPath)
+        {
             try
             {
-                if (string.Equals(_legacyConfigPath, _configPath, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(legacyConfigPath, _configPath, StringComparison.OrdinalIgnoreCase))
                 {
                     return;
                 }
 
-                if (!Directory.Exists(_legacyConfigPath))
+                if (!Directory.Exists(legacyConfigPath))
                 {
                     return;
                 }
 
-                var legacyConfigFile = Path.Combine(_legacyConfigPath, "app.json");
-                var newConfigFile = Path.Combine(_configPath, "app.json");
-                if (File.Exists(legacyConfigFile) && !File.Exists(newConfigFile))
+                var legacyConfigFile = Path.Combine(legacyConfigPath, "app.json");
+                if (File.Exists(legacyConfigFile) && !File.Exists(_appConfigFile))
                 {
-                    File.Copy(legacyConfigFile, newConfigFile);
+                    File.Copy(legacyConfigFile, _appConfigFile);
                 }
 
-                if (Directory.Exists(_legacyModelsPath))
+                if (Directory.Exists(legacyModelsPath))
                 {
                     var existingModels = Directory.GetFiles(_modelsPath, "*.json").Length;
                     if (existingModels == 0)
                     {
-                        var legacyModels = Directory.GetFiles(_legacyModelsPath, "*.json");
+                        var legacyModels = Directory.GetFiles(legacyModelsPath, "*.json");
                         foreach (var legacyModel in legacyModels)
                         {
                             var targetPath = Path.Combine(_modelsPath, Path.GetFileName(legacyModel));
@@ -84,7 +113,7 @@ namespace LumbarMassageTest.Services
             }
             catch (Exception ex)
             {
-                _logService.LogError("迁移旧配置失败", ex);
+                _logService.LogError($"迁移旧配置失败: {legacyConfigPath}", ex);
             }
         }
 
@@ -106,7 +135,9 @@ namespace LumbarMassageTest.Services
                         EnsureChannelConfigDefaults(model.Channel3Config);
                         EnsureChannelConfigDefaults(model.Channel4Config);
                         EnsureCurrentSleepConfigDefaults(model);
+                        EnsureAirLeakSettingsDefaults(model);
                         ApplyCurrentSleepConfigToChannels(model);
+                        ApplyAirLeakSettingsToChannels(model);
                         models.Add(model);
                     }
                 }
@@ -175,15 +206,203 @@ namespace LumbarMassageTest.Services
             }
         }
 
-        public async Task<AppConfig> LoadAppConfigAsync()
+        public async Task<SystemConfig> LoadSystemConfigAsync()
         {
-            var configFile = Path.Combine(_configPath, "app.json");
-
             try
             {
-                if (File.Exists(configFile))
+                if (File.Exists(_systemConfigFile))
                 {
-                    var json = await File.ReadAllTextAsync(configFile);
+                    var json = await File.ReadAllTextAsync(_systemConfigFile);
+                    var config = JsonSerializer.Deserialize<SystemConfig>(json, JsonOptions) ?? new SystemConfig();
+                    EnsureSystemConfigDefaults(config);
+                    return config;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError("加载系统配置失败，尝试从旧配置迁移", ex);
+            }
+
+            var migrated = await MigrateSystemConfigFromAppAsync();
+            if (migrated != null)
+            {
+                await SaveSystemConfigAsync(migrated);
+                return migrated;
+            }
+
+            var defaults = new SystemConfig();
+            EnsureSystemConfigDefaults(defaults);
+            await SaveSystemConfigAsync(defaults);
+            return defaults;
+        }
+
+        public async Task<bool> SaveSystemConfigAsync(SystemConfig config)
+        {
+            try
+            {
+                if (config == null)
+                {
+                    throw new ArgumentNullException(nameof(config));
+                }
+
+                EnsureSystemConfigDefaults(config);
+                var json = JsonSerializer.Serialize(config, JsonOptions);
+                await File.WriteAllTextAsync(_systemConfigFile, json);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError("保存系统配置失败", ex);
+                return false;
+            }
+        }
+
+        public async Task<RuntimeConfig> LoadRuntimeConfigAsync()
+        {
+            try
+            {
+                if (File.Exists(_runtimeConfigFile))
+                {
+                    var json = await File.ReadAllTextAsync(_runtimeConfigFile);
+                    var config = JsonSerializer.Deserialize<RuntimeConfig>(json, JsonOptions) ?? new RuntimeConfig();
+                    EnsureRuntimeConfigDefaults(config);
+                    return config;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError("加载运行时配置失败，尝试从旧配置迁移", ex);
+            }
+
+            var migrated = await MigrateRuntimeConfigFromAppAsync();
+            if (migrated != null)
+            {
+                await SaveRuntimeConfigAsync(migrated);
+                return migrated;
+            }
+
+            var defaults = new RuntimeConfig();
+            EnsureRuntimeConfigDefaults(defaults);
+            await SaveRuntimeConfigAsync(defaults);
+            return defaults;
+        }
+
+        public async Task<bool> SaveRuntimeConfigAsync(RuntimeConfig config)
+        {
+            try
+            {
+                if (config == null)
+                {
+                    throw new ArgumentNullException(nameof(config));
+                }
+
+                EnsureRuntimeConfigDefaults(config);
+                var json = JsonSerializer.Serialize(config, JsonOptions);
+                await File.WriteAllTextAsync(_runtimeConfigFile, json);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError("保存运行时配置失败", ex);
+                return false;
+            }
+        }
+
+        private async Task<SystemConfig?> MigrateSystemConfigFromAppAsync()
+        {
+            try
+            {
+                if (!File.Exists(_appConfigFile))
+                {
+                    return null;
+                }
+
+                var json = await File.ReadAllTextAsync(_appConfigFile);
+                var appConfig = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions);
+                if (appConfig == null)
+                {
+                    return null;
+                }
+
+                EnsureAppConfigDefaults(appConfig);
+                return new SystemConfig
+                {
+                    PLCIPAddress = appConfig.PLCIPAddress,
+                    PLCPort = appConfig.PLCPort,
+                    PLCStationId = appConfig.PLCStationId,
+                    PlcDiscreteInputCount = appConfig.PlcDiscreteInputCount,
+                    PlcCoilCount = appConfig.PlcCoilCount,
+                    AutoSave = appConfig.AutoSave,
+                    MesServerIp = appConfig.MesServerIp,
+                    MesServerPort = appConfig.MesServerPort,
+                    MesProtocol = appConfig.MesProtocol,
+                    MesIntegrationMode = appConfig.MesIntegrationMode,
+                    ModbusServerIp = appConfig.ModbusServerIp,
+                    ModbusServerPort = appConfig.ModbusServerPort,
+                    SerialDevice1 = appConfig.SerialDevice1,
+                    SerialDevice2 = appConfig.SerialDevice2,
+                    ChannelCount = appConfig.ChannelCount,
+                    PressureModuleStationId = appConfig.PressureModuleStationId,
+                    PressureInputStartAddress = appConfig.PressureInputStartAddress,
+                    PressureOutputStartAddress = appConfig.PressureOutputStartAddress,
+                    PressureInputFullScaleKPa = appConfig.PressureInputFullScaleKPa,
+                    PressureOutputFullScaleKPa = appConfig.PressureOutputFullScaleKPa,
+                    PressureZeroRaw1 = appConfig.PressureZeroRaw1,
+                    PressureZeroRaw2 = appConfig.PressureZeroRaw2,
+                    PressureZeroRaw3 = appConfig.PressureZeroRaw3,
+                    PressureZeroRaw4 = appConfig.PressureZeroRaw4
+                };
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError("从 app.json 迁移系统配置失败", ex);
+                return null;
+            }
+        }
+
+        private async Task<RuntimeConfig?> MigrateRuntimeConfigFromAppAsync()
+        {
+            try
+            {
+                if (!File.Exists(_appConfigFile))
+                {
+                    return null;
+                }
+
+                var json = await File.ReadAllTextAsync(_appConfigFile);
+                var appConfig = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions);
+                if (appConfig == null)
+                {
+                    return null;
+                }
+
+                EnsureAppConfigDefaults(appConfig);
+                return new RuntimeConfig
+                {
+                    LastWorkOrder = appConfig.LastWorkOrder ?? string.Empty,
+                    LastProductModel = appConfig.LastProductModel ?? string.Empty,
+                    TargetProduction = appConfig.TargetProduction,
+                    DailyProductionDate = appConfig.DailyProductionDate ?? string.Empty,
+                    DailyTestCount = appConfig.DailyTestCount,
+                    DailyPassCount = appConfig.DailyPassCount,
+                    DailyFailCount = appConfig.DailyFailCount,
+                    DailyChannelProductions = appConfig.DailyChannelProductions ?? new List<ChannelDailyProduction>()
+                };
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError("从 app.json 迁移运行时配置失败", ex);
+                return null;
+            }
+        }
+
+        public async Task<AppConfig> LoadAppConfigAsync()
+        {
+            try
+            {
+                if (File.Exists(_appConfigFile))
+                {
+                    var json = await File.ReadAllTextAsync(_appConfigFile);
                     var config = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions) ?? new AppConfig();
                     EnsureAppConfigDefaults(config);
                     return config;
@@ -231,9 +450,8 @@ namespace LumbarMassageTest.Services
 
                 EnsureAppConfigDefaults(config);
 
-                var configFile = Path.Combine(_configPath, "app.json");
                 var json = JsonSerializer.Serialize(config, JsonOptions);
-                await File.WriteAllTextAsync(configFile, json);
+                await File.WriteAllTextAsync(_appConfigFile, json);
                 return true;
             }
             catch (Exception ex)
@@ -249,13 +467,13 @@ namespace LumbarMassageTest.Services
             var model = new ProductModel
             {
                 ModelName = "默认型号",
-                Description = "默认腰托按摩产品",
+                Description = "默认气密测试产品",
                 ImagePath = string.Empty,
                 CurrentSleepConfig = currentSleepConfig,
+                AirLeakTestSettings = new AirLeakTestSettings(),
                 ProcessConfig = new TestProcessConfig
                 {
                     EnableBarcodeCheck = true,
-                    MaxTestCount = 3,
                     EnableCurrentMonitoring = true,
                     RecordCurrentBeforeStart = false,
                     CheckSameModel = true,
@@ -530,6 +748,47 @@ namespace LumbarMassageTest.Services
             }
         }
 
+        private static void EnsureAirLeakSettingsDefaults(ProductModel model)
+        {
+            if (model.AirLeakTestSettings == null)
+            {
+                model.AirLeakTestSettings = model.Channel1Config?.AirLeakTestSettings != null
+                    ? CloneAirLeakTestSettings(model.Channel1Config.AirLeakTestSettings)
+                    : new AirLeakTestSettings();
+            }
+
+            if (model.AirLeakTestSettings.TargetPressureKPa <= 0)
+            {
+                model.AirLeakTestSettings.TargetPressureKPa = model.AirLeakTestSettings.HighOutputPressureKPa > 0
+                    ? model.AirLeakTestSettings.HighOutputPressureKPa
+                    : 100;
+            }
+        }
+
+        private static void ApplyAirLeakSettingsToChannels(ProductModel model)
+        {
+            var settings = CloneAirLeakTestSettings(model.AirLeakTestSettings);
+            if (model.Channel1Config != null)
+            {
+                model.Channel1Config.AirLeakTestSettings = CloneAirLeakTestSettings(settings);
+            }
+
+            if (model.Channel2Config != null)
+            {
+                model.Channel2Config.AirLeakTestSettings = CloneAirLeakTestSettings(settings);
+            }
+
+            if (model.Channel3Config != null)
+            {
+                model.Channel3Config.AirLeakTestSettings = CloneAirLeakTestSettings(settings);
+            }
+
+            if (model.Channel4Config != null)
+            {
+                model.Channel4Config.AirLeakTestSettings = CloneAirLeakTestSettings(settings);
+            }
+        }
+
         private static void ApplyCurrentSleepConfigToChannels(ProductModel model)
         {
             if (model.CurrentSleepConfig == null)
@@ -558,7 +817,6 @@ namespace LumbarMassageTest.Services
             }
         }
 
-
         private static AirLeakTestSettings CloneAirLeakTestSettings(AirLeakTestSettings? source)
         {
             source ??= new AirLeakTestSettings();
@@ -568,7 +826,8 @@ namespace LumbarMassageTest.Services
                 HighStabilizeDurationMs = source.HighStabilizeDurationMs,
                 HighDetectDurationMs = source.HighDetectDurationMs,
                 HighExhaustDurationMs = source.HighExhaustDurationMs,
-                HighMaxDropKPa = source.HighMaxDropKPa,
+                GrossLeakThresholdKPa = source.GrossLeakThresholdKPa,
+                TargetPressureKPa = source.TargetPressureKPa > 0 ? source.TargetPressureKPa : source.HighOutputPressureKPa > 0 ? source.HighOutputPressureKPa : 100,
                 HighOutputPressureKPa = source.HighOutputPressureKPa > 0 ? source.HighOutputPressureKPa : 100,
                 LowInflateDurationMs = source.LowInflateDurationMs,
                 LowStabilizeDurationMs = source.LowStabilizeDurationMs,
@@ -583,13 +842,14 @@ namespace LumbarMassageTest.Services
         private static PressureChannelConfig ClonePressureChannelConfig(PressureChannelConfig? source)
         {
             source ??= new PressureChannelConfig();
+            int zeroRaw = source.ZeroRaw >= 3800 && source.ZeroRaw <= 4100 ? source.ZeroRaw : 4000;
             return new PressureChannelConfig
             {
                 Enabled = source.Enabled,
                 InputRegisterAddress = source.InputRegisterAddress,
                 OutputRegisterAddress = source.OutputRegisterAddress,
-                ZeroRaw = source.ZeroRaw,
-                FullScaleRaw = source.FullScaleRaw > source.ZeroRaw ? source.FullScaleRaw : 20000,
+                ZeroRaw = zeroRaw,
+                FullScaleRaw = source.FullScaleRaw > zeroRaw ? source.FullScaleRaw : 20000,
                 PressureZeroKPa = source.PressureZeroKPa,
                 PressureFullScaleKPa = source.PressureFullScaleKPa,
                 Output4mAPressureKPa = source.Output4mAPressureKPa,
@@ -628,7 +888,8 @@ namespace LumbarMassageTest.Services
                 HighPressureInletValveAddress = source.HighPressureInletValveAddress ?? string.Empty,
                 HighPressureExhaustValveAddress = source.HighPressureExhaustValveAddress ?? string.Empty,
                 LowPressureInletValveAddress = source.LowPressureInletValveAddress ?? string.Empty,
-                LowPressureExhaustValveAddress = source.LowPressureExhaustValveAddress ?? string.Empty
+                LowPressureExhaustValveAddress = source.LowPressureExhaustValveAddress ?? string.Empty,
+                PressureTransducerIsolationValveAddress = source.PressureTransducerIsolationValveAddress ?? string.Empty
             };
         }
 
@@ -637,6 +898,180 @@ namespace LumbarMassageTest.Services
             PropertyNameCaseInsensitive = true,
             WriteIndented = true
         };
+
+        private static void EnsureSystemConfigDefaults(SystemConfig config)
+        {
+            config ??= new SystemConfig();
+
+            if (string.IsNullOrWhiteSpace(config.PLCIPAddress))
+            {
+                config.PLCIPAddress = "192.168.1.188";
+            }
+
+            if (config.PLCPort <= 0)
+            {
+                config.PLCPort = 502;
+            }
+
+            if (config.PLCStationId < 1 || config.PLCStationId > 247)
+            {
+                config.PLCStationId = IPLCService.DefaultUnitId;
+            }
+
+            if (config.PlcDiscreteInputCount < 1 || config.PlcDiscreteInputCount > 2000)
+            {
+                config.PlcDiscreteInputCount = 256;
+            }
+
+            if (config.PlcCoilCount < 1 || config.PlcCoilCount > 2000)
+            {
+                config.PlcCoilCount = 128;
+            }
+
+            if (string.IsNullOrWhiteSpace(config.MesServerIp))
+            {
+                config.MesServerIp = "127.0.0.1";
+            }
+
+            if (config.MesServerPort <= 0)
+            {
+                config.MesServerPort = 8080;
+            }
+
+            if (!Enum.IsDefined(typeof(MesIntegrationMode), config.MesIntegrationMode))
+            {
+                config.MesIntegrationMode = MesIntegrationMode.HttpPush;
+            }
+
+            if (!IsValidMesProtocol(config.MesProtocol))
+            {
+                config.MesProtocol = "TCP";
+            }
+            else
+            {
+                config.MesProtocol = config.MesProtocol!.Trim().ToUpperInvariant();
+            }
+
+            if (string.IsNullOrWhiteSpace(config.ModbusServerIp))
+            {
+                config.ModbusServerIp = "0.0.0.0";
+            }
+
+            if (config.ModbusServerPort <= 0 || config.ModbusServerPort > 65535)
+            {
+                config.ModbusServerPort = 502;
+            }
+
+            if (config.ChannelCount != 2 && config.ChannelCount != 3 && config.ChannelCount != 4)
+            {
+                config.ChannelCount = 4;
+            }
+
+            if (config.PressureModuleStationId < 1 || config.PressureModuleStationId > 247)
+            {
+                config.PressureModuleStationId = 1;
+            }
+
+            if (config.PressureInputStartAddress <= 0)
+            {
+                config.PressureInputStartAddress = 40097;
+            }
+
+            if (config.PressureOutputStartAddress <= 0)
+            {
+                config.PressureOutputStartAddress = 40023;
+            }
+
+            if (config.PressureInputFullScaleKPa < 50 || config.PressureInputFullScaleKPa > 200)
+            {
+                config.PressureInputFullScaleKPa = 100;
+            }
+
+            if (config.PressureOutputFullScaleKPa < 100 || config.PressureOutputFullScaleKPa > 200)
+            {
+                config.PressureOutputFullScaleKPa = 100;
+            }
+
+            config.SerialDevice1 ??= SerialPortConfig.CreateDefaultDevice1();
+            config.SerialDevice2 ??= SerialPortConfig.CreateDefaultDevice2();
+            EnsureSerialDefaults(config.SerialDevice1, "COM1");
+            EnsureSerialDefaults(config.SerialDevice2, "COM2");
+        }
+
+        private static void EnsureRuntimeConfigDefaults(RuntimeConfig config)
+        {
+            config ??= new RuntimeConfig();
+
+            if (config.LastWorkOrder == null)
+            {
+                config.LastWorkOrder = string.Empty;
+            }
+
+            if (config.LastProductModel == null)
+            {
+                config.LastProductModel = string.Empty;
+            }
+
+            if (config.TargetProduction < 0)
+            {
+                config.TargetProduction = 0;
+            }
+
+            if (config.DailyProductionDate == null)
+            {
+                config.DailyProductionDate = string.Empty;
+            }
+
+            if (config.DailyTestCount < 0)
+            {
+                config.DailyTestCount = 0;
+            }
+
+            if (config.DailyPassCount < 0)
+            {
+                config.DailyPassCount = 0;
+            }
+
+            if (config.DailyFailCount < 0)
+            {
+                config.DailyFailCount = 0;
+            }
+
+            config.DailyChannelProductions ??= new List<ChannelDailyProduction>();
+        }
+
+        private static void EnsureSerialDefaults(SerialPortConfig? config, string defaultPortName)
+        {
+            if (config == null)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(config.PortName))
+            {
+                config.PortName = defaultPortName;
+            }
+
+            if (config.BaudRate <= 0)
+            {
+                config.BaudRate = 19200;
+            }
+
+            if (config.DataBits <= 0)
+            {
+                config.DataBits = 8;
+            }
+
+            if (string.IsNullOrWhiteSpace(config.Parity))
+            {
+                config.Parity = "None";
+            }
+
+            if (string.IsNullOrWhiteSpace(config.StopBits))
+            {
+                config.StopBits = "One";
+            }
+        }
 
         private static void EnsureAppConfigDefaults(AppConfig config)
         {

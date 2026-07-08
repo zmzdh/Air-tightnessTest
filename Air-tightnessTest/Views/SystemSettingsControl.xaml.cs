@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -17,7 +18,10 @@ namespace LumbarMassageTest.UserControls
         private readonly MesService _mesService;
         private readonly ModbusServerService _modbusService;
         private readonly LicenseService _licenseService;
-        private AppConfig? _currentConfig;
+        private readonly PressureModbusService _pressureService;
+        private readonly TextBox[] _pressureZeroRawInputs;
+        private readonly TextBlock[] _pressureZeroRawStatuses;
+        private SystemConfig? _currentConfig;
         private bool _isLoading;
         private bool _mesEventSubscribed;
         private bool _modbusEventSubscribed;
@@ -25,15 +29,23 @@ namespace LumbarMassageTest.UserControls
         private static readonly string[] SupportedParities = { "None", "Odd", "Even", "Mark", "Space" };
         private static readonly string[] SupportedStopBits = { "One", "OnePointFive", "Two" };
         private static readonly int[] SupportedChannelCounts = { 2, 3, 4 };
+        private const int PressureZeroRawMin = 3800;
+        private const int PressureZeroRawMax = 4100;
         private static readonly MesModeOption[] MesModeOptions =
         {
                         new MesModeOption(MesIntegrationMode.HttpPush, "HTTP 推送"),
                         new MesModeOption(MesIntegrationMode.ModbusServer, "Modbus 服务端")
         };
 
-        public event EventHandler<AppConfig>? ConfigurationSaved;
+        public event EventHandler<SystemConfig>? ConfigurationSaved;
 
-        public SystemSettingsControl(ConfigService configService, PLCService plcService, MesService mesService, ModbusServerService modbusService, LicenseService licenseService)
+        public SystemSettingsControl(
+            ConfigService configService,
+            PLCService plcService,
+            MesService mesService,
+            ModbusServerService modbusService,
+            LicenseService licenseService,
+            PressureModbusService pressureService)
         {
             InitializeComponent();
 
@@ -42,6 +54,16 @@ namespace LumbarMassageTest.UserControls
             _mesService = mesService ?? throw new ArgumentNullException(nameof(mesService));
             _modbusService = modbusService ?? throw new ArgumentNullException(nameof(modbusService));
             _licenseService = licenseService ?? throw new ArgumentNullException(nameof(licenseService));
+            _pressureService = pressureService ?? throw new ArgumentNullException(nameof(pressureService));
+
+            _pressureZeroRawInputs = new[] { TxtPressureZeroRaw1, TxtPressureZeroRaw2, TxtPressureZeroRaw3, TxtPressureZeroRaw4 };
+            _pressureZeroRawStatuses = new[]
+            {
+                TxtPressureZeroRaw1Status,
+                TxtPressureZeroRaw2Status,
+                TxtPressureZeroRaw3Status,
+                TxtPressureZeroRaw4Status
+            };
 
             CmbMesProtocol.ItemsSource = SupportedMesProtocols;
             CmbMesProtocol.SelectionChanged += CmbMesProtocol_SelectionChanged;
@@ -107,7 +129,7 @@ namespace LumbarMassageTest.UserControls
             _isLoading = true;
             try
             {
-                _currentConfig = await _configService.LoadAppConfigAsync();
+                _currentConfig = await _configService.LoadSystemConfigAsync();
                 if (_currentConfig != null)
                 {
                     TxtPlcIp.Text = _currentConfig.PLCIPAddress;
@@ -126,6 +148,7 @@ namespace LumbarMassageTest.UserControls
                     CmbChannelCount.SelectedItem = SupportedChannelCounts.Contains(_currentConfig.ChannelCount) ? _currentConfig.ChannelCount : 4;
                     TxtPressureInputFullScale.Text = NormalizePressureRange(_currentConfig.PressureInputFullScaleKPa, 50, 200, 100).ToString("F0");
                     TxtPressureOutputFullScale.Text = NormalizePressureRange(_currentConfig.PressureOutputFullScaleKPa, 100, 200, 100).ToString("F0");
+                    ApplyZeroRawInputs(_currentConfig);
                 }
                 else
                 {
@@ -135,11 +158,16 @@ namespace LumbarMassageTest.UserControls
                     TxtModbusPort.Text = "502";
                     TxtPlcInputCount.Text = "256";
                     TxtPlcCoilCount.Text = "128";
-                    ApplySerialConfig(new AppConfig());
+                    ApplySerialConfig(new SystemConfig());
                     CmbChannelCount.SelectedItem = 4;
                     TxtPressureInputFullScale.Text = "100";
                     TxtPressureOutputFullScale.Text = "100";
+                    ApplyZeroRawInputs(new SystemConfig());
+                    UpdateZeroCalibrationVisibility(4);
                 }
+
+                int channelCount = CmbChannelCount.SelectedItem is int cc ? cc : 4;
+                UpdateZeroCalibrationVisibility(channelCount);
             }
             catch (Exception ex)
             {
@@ -150,10 +178,11 @@ namespace LumbarMassageTest.UserControls
                 TxtModbusPort.Text = "502";
                 TxtPlcInputCount.Text = "256";
                 TxtPlcCoilCount.Text = "128";
-                ApplySerialConfig(new AppConfig());
+                ApplySerialConfig(new SystemConfig());
                 CmbChannelCount.SelectedItem = 4;
                     TxtPressureInputFullScale.Text = "100";
                     TxtPressureOutputFullScale.Text = "100";
+                    ApplyZeroRawInputs(new SystemConfig());
             }
             finally
             {
@@ -187,11 +216,13 @@ namespace LumbarMassageTest.UserControls
 
             try
             {
-                bool saved = await _configService.SaveAppConfigAsync(config);
+                bool saved = await _configService.SaveSystemConfigAsync(config);
                 if (saved)
                 {
                     _currentConfig = config;
                     MessageBox.Show("配置保存成功", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    UpdateZeroCalibrationVisibility(config.ChannelCount);
 
                     ConfigurationSaved?.Invoke(this, config);
 
@@ -236,7 +267,7 @@ namespace LumbarMassageTest.UserControls
                     await _mesService.DisconnectAsync();
                     await _modbusService.ApplyConfigurationAsync(config);
                     _currentConfig = config;
-                    await _configService.SaveAppConfigAsync(config);
+                    await _configService.SaveSystemConfigAsync(config);
                     MessageBox.Show("Modbus 服务已启用。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 catch (Exception ex)
@@ -263,7 +294,7 @@ namespace LumbarMassageTest.UserControls
                 if (connected)
                 {
                     _currentConfig = config;
-                    await _configService.SaveAppConfigAsync(config);
+                    await _configService.SaveSystemConfigAsync(config);
                     MessageBox.Show("MES 系统已启用。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
@@ -385,7 +416,7 @@ namespace LumbarMassageTest.UserControls
             }
         }
 
-        private bool TryBuildConfigFromInputs(out AppConfig config, out string errorMessage)
+        private bool TryBuildConfigFromInputs(out SystemConfig config, out string errorMessage)
         {
             errorMessage = string.Empty;
 
@@ -411,7 +442,7 @@ namespace LumbarMassageTest.UserControls
             string serial2StopBits = CmbSerial2StopBits.SelectedItem as string ?? string.Empty;
             string pressureInputFullScaleText = TxtPressureInputFullScale.Text.Trim();
             string pressureOutputFullScaleText = TxtPressureOutputFullScale.Text.Trim();
-            var source = _currentConfig ?? new AppConfig();
+            var source = _currentConfig ?? new SystemConfig();
             int channelCount = CmbChannelCount.SelectedItem is int cc && SupportedChannelCounts.Contains(cc) ? cc : source.ChannelCount;
             if (channelCount != 2 && channelCount != 3 && channelCount != 4)
             {
@@ -430,6 +461,24 @@ namespace LumbarMassageTest.UserControls
                 errorMessage = "模拟输出量程必须是 100-200 KPa 之间的数字";
                 config = null!;
                 return false;
+            }
+
+            int[] pressureZeroRawValues = { source.PressureZeroRaw1, source.PressureZeroRaw2, source.PressureZeroRaw3, source.PressureZeroRaw4 };
+            for (int i = 0; i < pressureZeroRawValues.Length; i++)
+            {
+                if (i >= channelCount)
+                {
+                    continue;
+                }
+
+                if (!TryParseZeroRaw(_pressureZeroRawInputs[i].Text, pressureZeroRawValues[i], out int parsedValue))
+                {
+                    errorMessage = $"通道{i + 1}零点原始值必须在3800-4100之间，请检查变送器";
+                    config = null!;
+                    return false;
+                }
+
+                pressureZeroRawValues[i] = parsedValue;
             }
 
             TxtPressureInputFullScale.Text = pressureInputFullScale.ToString("F0");
@@ -581,7 +630,7 @@ namespace LumbarMassageTest.UserControls
             var device2 = BuildSerialConfig(source.SerialDevice2 ?? SerialPortConfig.CreateDefaultDevice2(),
                 serial2Port, serial2BaudText, serial2DataBitsText, serial2Parity, serial2StopBits);
 
-            config = new AppConfig
+            config = new SystemConfig
             {
                 PLCIPAddress = plcIp,
                 PLCPort = plcPort,
@@ -589,8 +638,6 @@ namespace LumbarMassageTest.UserControls
                 PlcDiscreteInputCount = plcInputCount,
                 PlcCoilCount = plcCoilCount,
                 AutoSave = source.AutoSave,
-                LastWorkOrder = source.LastWorkOrder,
-                LastProductModel = source.LastProductModel,
                 MesIntegrationMode = selectedMode,
                 MesServerIp = mesIpValue,
                 MesServerPort = mesPortValue,
@@ -603,6 +650,10 @@ namespace LumbarMassageTest.UserControls
                 PressureOutputStartAddress = source.PressureOutputStartAddress,
                 PressureInputFullScaleKPa = pressureInputFullScale,
                 PressureOutputFullScaleKPa = pressureOutputFullScale,
+                PressureZeroRaw1 = pressureZeroRawValues[0],
+                PressureZeroRaw2 = pressureZeroRawValues[1],
+                PressureZeroRaw3 = pressureZeroRawValues[2],
+                PressureZeroRaw4 = pressureZeroRawValues[3],
                 SerialDevice1 = device1,
                 SerialDevice2 = device2
             };
@@ -610,7 +661,7 @@ namespace LumbarMassageTest.UserControls
             return true;
         }
 
-        private void ApplySerialConfig(AppConfig config)
+        private void ApplySerialConfig(SystemConfig config)
         {
             var device1 = config.SerialDevice1 ?? SerialPortConfig.CreateDefaultDevice1();
             var device2 = config.SerialDevice2 ?? SerialPortConfig.CreateDefaultDevice2();
@@ -640,6 +691,83 @@ namespace LumbarMassageTest.UserControls
             };
 
             return config;
+        }
+
+        private void ApplyZeroRawInputs(SystemConfig config)
+        {
+            if (config == null)
+            {
+                return;
+            }
+
+            int[] values = { config.PressureZeroRaw1, config.PressureZeroRaw2, config.PressureZeroRaw3, config.PressureZeroRaw4 };
+            for (int i = 0; i < _pressureZeroRawInputs.Length; i++)
+            {
+                int value = values[i] >= 0 ? values[i] : 4000;
+                _pressureZeroRawInputs[i].Text = value.ToString();
+                _pressureZeroRawStatuses[i].Text = string.Empty;
+                _pressureZeroRawStatuses[i].Foreground = Brushes.Gray;
+            }
+        }
+
+        private void UpdateZeroCalibrationVisibility(int channelCount)
+        {
+            ZeroPanel1.Visibility = channelCount >= 1 ? Visibility.Visible : Visibility.Collapsed;
+            ZeroPanel2.Visibility = channelCount >= 2 ? Visibility.Visible : Visibility.Collapsed;
+            ZeroPanel3.Visibility = channelCount >= 3 ? Visibility.Visible : Visibility.Collapsed;
+            ZeroPanel4.Visibility = channelCount >= 4 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private static bool TryParseZeroRaw(string input, int sourceValue, out int value)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                value = sourceValue;
+                return value == -1 || IsPressureZeroRawInRange(value);
+            }
+
+            return int.TryParse(input, out value) && IsPressureZeroRawInRange(value);
+        }
+
+        private static bool IsPressureZeroRawInRange(int value)
+        {
+            return value >= PressureZeroRawMin && value <= PressureZeroRawMax;
+        }
+
+        private async void BtnAcquirePressureZeroRaw_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button
+                || button.Tag is not string tag
+                || !int.TryParse(tag, out int channel)
+                || channel < 1
+                || channel > 4)
+            {
+                return;
+            }
+
+            TextBox input = _pressureZeroRawInputs[channel - 1];
+            TextBlock status = _pressureZeroRawStatuses[channel - 1];
+
+            try
+            {
+                int raw = await _pressureService.ReadRawValueAsync(channel, null, System.Threading.CancellationToken.None);
+                if (!IsPressureZeroRawInRange(raw))
+                {
+                    status.Text = $"采集值 {raw} 超出{PressureZeroRawMin}-{PressureZeroRawMax}";
+                    status.Foreground = Brushes.Firebrick;
+                    return;
+                }
+
+                input.Text = raw.ToString();
+                status.Text = $"已获取 {raw}";
+                status.Foreground = Brushes.ForestGreen;
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.LogError($"获取通道{channel}压力零点失败", ex);
+                status.Text = "获取失败";
+                status.Foreground = Brushes.Firebrick;
+            }
         }
 
         private static bool TryParsePressureRange(string input, double sourceValue, double min, double max, double fallback, out double value)
@@ -929,11 +1057,29 @@ namespace LumbarMassageTest.UserControls
         {
             if (_licenseService.ExportRequestFile(out var error))
             {
-                MessageBox.Show("request.dat 导出成功：{_licenseService.RequestFilePath}", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"request.dat 导出成功：{_licenseService.RequestFilePath}", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                OpenRequestFileLocation();
             }
             else
             {
                 MessageBox.Show($"导出 request.dat 失败: {error}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void OpenRequestFileLocation()
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{_licenseService.RequestFilePath}\"",
+                    UseShellExecute = true
+                });
+            }
+            catch
+            {
+                // 导出已成功；无法打开资源管理器时仅保留提示中的完整路径。
             }
         }
 

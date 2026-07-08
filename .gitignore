@@ -5,3 +5,5 @@ Air-tightnessTest/bin/
 Air-tightnessTest/obj/
 Air-tightnessTest/packages/
 .vs/
+dist/
+artifacts/

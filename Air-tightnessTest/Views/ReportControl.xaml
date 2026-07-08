@@ -148,6 +148,7 @@
                             <DataGridTextColumn Header="产品型号" Binding="{Binding ProductModel}" Width="100"/>
                             <DataGridTextColumn Header="产品代码" Binding="{Binding ProductCode}" Width="150"/>
                             <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="60"/>
+                            <DataGridTextColumn Header="低压压差" Binding="{Binding LowPressureDropDisplay}" Width="100"/>
                             <DataGridTextColumn Header="测试结果" Binding="{Binding Result}" Width="80">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">

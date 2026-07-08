@@ -83,11 +83,6 @@
                                 <CheckBox Name="ChkMeasureSleepCurrent" Visibility="Collapsed" Content="测量休眠电流" Margin="5"/>
                                 <CheckBox Name="ChkMeasureStaticCurrent" Visibility="Collapsed" Content="测量静态电流" Margin="5"/>
 
-                                <StackPanel Orientation="Horizontal" Margin="5,10,5,5">
-                                    <TextBlock Text="最大重测次数:" VerticalAlignment="Center" Width="100"/>
-                                    <TextBox Name="TxtMaxTestCount" Width="60" Margin="10,0,0,0" Height="25"/>
-                                </StackPanel>
-
                                 <StackPanel Orientation="Horizontal" Margin="5" Visibility="Collapsed"><TextBlock Text="主副驾断电(ms):" VerticalAlignment="Center" Width="100"/><TextBox Name="TxtPowerOffDuration" Width="80" Margin="10,0,0,0" Height="25"/></StackPanel>
                             </StackPanel>
                         </Grid>
@@ -275,6 +270,54 @@
                             </StackPanel>
                         </GroupBox>
 
+
+                        <GroupBox Header="气密测试参数(通道共用)" Margin="0,0,0,15">
+                            <Grid Margin="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="100"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="总设定气压(KPa):" VerticalAlignment="Center" Margin="5"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" Name="TxtAirTargetPressure" Height="25" Margin="5"/>
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="低压差判断(Pa):" VerticalAlignment="Center" Margin="5"/>
+                                <TextBox Grid.Row="0" Grid.Column="3" Name="TxtLowMaxDrop" Height="25" Margin="5"/>
+                                <TextBlock Grid.Row="0" Grid.Column="4" Text="大漏检测差值(KPa):" VerticalAlignment="Center" Margin="5"/>
+                                <TextBox Grid.Row="0" Grid.Column="5" Name="TxtGrossLeakThreshold" Height="25" Margin="5"/>
+                                <TextBlock Grid.Row="0" Grid.Column="6" Text="采样间隔(ms):" VerticalAlignment="Center" Margin="5"/>
+                                <TextBox Grid.Row="0" Grid.Column="7" Name="TxtPressureSampleInterval" Height="25" Margin="5"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="高压阀打开(ms):" VerticalAlignment="Center" Margin="5"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Name="TxtHighInflateDuration" Height="25" Margin="5"/>
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="高压静置(ms):" VerticalAlignment="Center" Margin="5"/>
+                                <TextBox Grid.Row="1" Grid.Column="3" Name="TxtHighStabilizeDuration" Height="25" Margin="5"/>
+                                <TextBlock Grid.Row="1" Grid.Column="4" Text="高压压差测算(ms):" VerticalAlignment="Center" Margin="5"/>
+                                <TextBox Grid.Row="1" Grid.Column="5" Name="TxtHighDetectDuration" Height="25" Margin="5"/>
+                                <TextBlock Grid.Row="1" Grid.Column="6" Text="高压排气(ms):" VerticalAlignment="Center" Margin="5"/>
+                                <TextBox Grid.Row="1" Grid.Column="7" Name="TxtHighExhaustDuration" Height="25" Margin="5"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="低压阀打开(ms):" VerticalAlignment="Center" Margin="5"/>
+                                <TextBox Grid.Row="2" Grid.Column="1" Name="TxtLowInflateDuration" Height="25" Margin="5"/>
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text="低压静置(ms):" VerticalAlignment="Center" Margin="5"/>
+                                <TextBox Grid.Row="2" Grid.Column="3" Name="TxtLowStabilizeDuration" Height="25" Margin="5"/>
+                                <TextBlock Grid.Row="2" Grid.Column="4" Text="低压压差测算(ms):" VerticalAlignment="Center" Margin="5"/>
+                                <TextBox Grid.Row="2" Grid.Column="5" Name="TxtLowDetectDuration" Height="25" Margin="5"/>
+                                <TextBlock Grid.Row="2" Grid.Column="6" Text="低压排气(ms):" VerticalAlignment="Center" Margin="5"/>
+                                <TextBox Grid.Row="2" Grid.Column="7" Name="TxtLowExhaustDuration" Height="25" Margin="5"/>
+                            </Grid>
+                        </GroupBox>
                         <GroupBox Header="手动调试点位配置" Margin="0,0,0,15">
                             <DataGrid x:Name="ManualControlGrid"
                                       AutoGenerateColumns="False"

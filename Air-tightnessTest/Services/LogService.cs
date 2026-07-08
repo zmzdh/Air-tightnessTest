@@ -29,18 +29,107 @@ namespace LumbarMassageTest.Services
         private readonly ReaderWriterLockSlim _fileLock = new();
         private readonly ConcurrentQueue<LogEntry> _recentEntries = new();
         private const int MaxCachedEntries = 500;
+        private const string LegacyAppDataFolderName = "LumbarMassageTest";
+        private static string AppDataFolderName => typeof(LogService).Assembly.GetName().Name ?? "Air-tightnessTest";
 
         public event EventHandler<LogEventArgs>? LogReceived;
 
         private LogService()
         {
-            _logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            _logDirectory = ResolveLogDirectory();
             if (!Directory.Exists(_logDirectory))
             {
                 Directory.CreateDirectory(_logDirectory);
             }
 
+            MigrateLegacyLogs();
+            EnsureLogFilesHaveUtf8Bom();
             LoadExistingEntries();
+        }
+
+        private static string ResolveLogDirectory()
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if (string.IsNullOrWhiteSpace(localAppData))
+            {
+                return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            }
+
+            return Path.Combine(localAppData, AppDataFolderName, "Logs");
+        }
+
+        private void MigrateLegacyLogs()
+        {
+            foreach (var legacyDirectory in GetLegacyLogDirectories())
+            {
+                try
+                {
+                    if (string.Equals(legacyDirectory, _logDirectory, StringComparison.OrdinalIgnoreCase)
+                        || !Directory.Exists(legacyDirectory))
+                    {
+                        continue;
+                    }
+
+                    foreach (var file in Directory.EnumerateFiles(legacyDirectory, "*.log"))
+                    {
+                        var targetPath = Path.Combine(_logDirectory, Path.GetFileName(file));
+                        if (!File.Exists(targetPath))
+                        {
+                            File.Copy(file, targetPath);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Ignore migration failures so logging remains available.
+                }
+            }
+        }
+
+        private static IEnumerable<string> GetLegacyLogDirectories()
+        {
+            yield return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if (!string.IsNullOrWhiteSpace(localAppData))
+            {
+                yield return Path.Combine(localAppData, LegacyAppDataFolderName, "Logs");
+            }
+        }
+
+        private void EnsureLogFilesHaveUtf8Bom()
+        {
+            try
+            {
+                foreach (var file in Directory.EnumerateFiles(_logDirectory, "*.log"))
+                {
+                    var bytes = File.ReadAllBytes(file);
+                    if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        _ = new UTF8Encoding(false, true).GetString(bytes);
+                    }
+                    catch (DecoderFallbackException)
+                    {
+                        continue;
+                    }
+
+                    var withBom = new byte[bytes.Length + 3];
+                    withBom[0] = 0xEF;
+                    withBom[1] = 0xBB;
+                    withBom[2] = 0xBF;
+                    Buffer.BlockCopy(bytes, 0, withBom, 3, bytes.Length);
+                    File.WriteAllBytes(file, withBom);
+                }
+            }
+            catch
+            {
+                // BOM compatibility is best-effort; logging must remain available.
+            }
         }
 
         public void LogInfo(string message) => WriteLog(LogLevel.Info, message, null);
@@ -208,7 +297,7 @@ namespace LumbarMassageTest.Services
             _fileLock.EnterWriteLock();
             try
             {
-                File.AppendAllText(path, line + Environment.NewLine, Encoding.UTF8);
+                File.AppendAllText(path, line + Environment.NewLine, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
             }
             finally
             {

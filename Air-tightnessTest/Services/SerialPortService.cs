@@ -294,17 +294,6 @@ namespace LumbarMassageTest.Services
                         _serialPort = null;
                     }
                 }
-
-                try
-                {
-                    _serialPort = CreatePort(_config);
-                    _serialPort.DataReceived += SerialPort_DataReceived;
-                    _serialPort.Open();
-                }
-                catch (Exception ex)
-                {
-                    _logService.LogError("打开串口失败", ex);
-                }
             }
         }
 

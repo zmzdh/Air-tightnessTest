@@ -247,8 +247,8 @@ namespace LumbarMassageTest.UserControls
         {
             var startDate = StartDatePicker.SelectedDate ?? DateTime.Now.AddDays(-7);
             var endDate = EndDatePicker.SelectedDate ?? DateTime.Now;
-            var model = (CmbProductModel.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
-            var operatorName = (CmbOperator.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
+            var model = CmbProductModel.SelectedValue?.ToString() ?? string.Empty;
+            var operatorName = CmbOperator.SelectedValue?.ToString() ?? string.Empty;
             var result = (CmbTestResult.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
             var workOrder = TxtWorkOrder.Text.Trim();
 
@@ -256,12 +256,12 @@ namespace LumbarMassageTest.UserControls
             var allRecords = await _dbService.GetAllTestRecordsAsync(startDate, endDate, model, operatorName, result, workOrder, productCode);
 
             var csv = new StringBuilder();
-            csv.AppendLine("序号,测试时间,工单号,产品型号,产品代码,通道,测试结果,失败原因,操作员,测试时长(s)");
+            csv.AppendLine("序号,测试时间,工单号,产品型号,产品代码,通道,低压压差,测试结果,失败原因,操作员,测试时长(s)");
 
             foreach (var record in allRecords)
             {
 
-                csv.AppendLine($"{record.Id},{record.TestTime:yyyy-MM-dd HH:mm:ss},{record.WorkOrder},{record.ProductModel},{record.ProductCode},{record.Channel},{record.Result},\"{record.FailReason}\",{record.Operator},{record.TestDuration:F1}");
+                csv.AppendLine($"{record.Id},{record.TestTime:yyyy-MM-dd HH:mm:ss},{record.WorkOrder},{record.ProductModel},{record.ProductCode},{record.Channel},{record.LowPressureDropDisplay},{record.Result},\"{record.FailReason}\",{record.Operator},{record.TestDuration:F1}");
             }
 
             await File.WriteAllTextAsync(filePath, csv.ToString(), Encoding.UTF8);
@@ -319,8 +319,8 @@ namespace LumbarMassageTest.UserControls
         {
             var startDate = StartDatePicker.SelectedDate ?? DateTime.Now.AddDays(-7);
             var endDate = EndDatePicker.SelectedDate ?? DateTime.Now;
-            var model = (CmbProductModel.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
-            var operatorName = (CmbOperator.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
+            var model = CmbProductModel.SelectedValue?.ToString() ?? string.Empty;
+            var operatorName = CmbOperator.SelectedValue?.ToString() ?? string.Empty;
             var result = (CmbTestResult.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
             var workOrder = TxtWorkOrder.Text.Trim();
             var productCode = TxtProductCode.Text.Trim();

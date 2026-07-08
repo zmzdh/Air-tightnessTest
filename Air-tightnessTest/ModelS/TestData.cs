@@ -46,6 +46,50 @@ namespace LumbarMassageTest.Models
         public int PressureOutputStartAddress { get; set; } = 40023;
         public double PressureInputFullScaleKPa { get; set; } = 100;
         public double PressureOutputFullScaleKPa { get; set; } = 100;
+        public int PressureZeroRaw1 { get; set; } = -1;
+        public int PressureZeroRaw2 { get; set; } = -1;
+        public int PressureZeroRaw3 { get; set; } = -1;
+        public int PressureZeroRaw4 { get; set; } = -1;
+    }
+
+    public class SystemConfig
+    {
+        public string PLCIPAddress { get; set; } = "192.168.1.188";
+        public int PLCPort { get; set; } = 502;
+        public byte PLCStationId { get; set; } = IPLCService.DefaultUnitId;
+        public ushort PlcDiscreteInputCount { get; set; } = 256;
+        public ushort PlcCoilCount { get; set; } = 128;
+        public bool AutoSave { get; set; } = true;
+        public string MesServerIp { get; set; } = "127.0.0.1";
+        public int MesServerPort { get; set; } = 8080;
+        public string MesProtocol { get; set; } = "TCP";
+        public MesIntegrationMode MesIntegrationMode { get; set; } = MesIntegrationMode.HttpPush;
+        public string ModbusServerIp { get; set; } = "0.0.0.0";
+        public int ModbusServerPort { get; set; } = 502;
+        public SerialPortConfig SerialDevice1 { get; set; } = SerialPortConfig.CreateDefaultDevice1();
+        public SerialPortConfig SerialDevice2 { get; set; } = SerialPortConfig.CreateDefaultDevice2();
+        public int ChannelCount { get; set; } = 4;
+        public byte PressureModuleStationId { get; set; } = 1;
+        public int PressureInputStartAddress { get; set; } = 40097;
+        public int PressureOutputStartAddress { get; set; } = 40023;
+        public double PressureInputFullScaleKPa { get; set; } = 100;
+        public double PressureOutputFullScaleKPa { get; set; } = 100;
+        public int PressureZeroRaw1 { get; set; } = -1;
+        public int PressureZeroRaw2 { get; set; } = -1;
+        public int PressureZeroRaw3 { get; set; } = -1;
+        public int PressureZeroRaw4 { get; set; } = -1;
+    }
+
+    public class RuntimeConfig
+    {
+        public string LastWorkOrder { get; set; } = string.Empty;
+        public string LastProductModel { get; set; } = string.Empty;
+        public int TargetProduction { get; set; }
+        public string DailyProductionDate { get; set; } = string.Empty;
+        public int DailyTestCount { get; set; }
+        public int DailyPassCount { get; set; }
+        public int DailyFailCount { get; set; }
+        public List<ChannelDailyProduction> DailyChannelProductions { get; set; } = new();
     }
 
     public class ChannelDailyProduction
@@ -166,6 +210,7 @@ namespace LumbarMassageTest.Models
         public bool HighPressureExhaustValve { get; set; }
         public bool LowPressureInletValve { get; set; }
         public bool LowPressureExhaustValve { get; set; }
+        public bool PressureTransducerIsolationValve { get; set; }
 
         // 数据寄存器
         public int HeightRawValue { get; set; }
@@ -510,6 +555,7 @@ namespace LumbarMassageTest.Models
             channel.HighPressureExhaustValve = TryReadBitValue(FirstNonEmpty(manual.HighPressureExhaustValveAddress, manual.DownInflateUpDeflateAddress), inputBits, coilBits);
             channel.LowPressureInletValve = TryReadBitValue(FirstNonEmpty(manual.LowPressureInletValveAddress, manual.BothInflateAddress), inputBits, coilBits);
             channel.LowPressureExhaustValve = TryReadBitValue(FirstNonEmpty(manual.LowPressureExhaustValveAddress, manual.BothDeflateAddress), inputBits, coilBits);
+            channel.PressureTransducerIsolationValve = TryReadBitValue(manual.PressureTransducerIsolationValveAddress, inputBits, coilBits);
         }
 
         private static string FirstNonEmpty(params string?[] values)
@@ -585,6 +631,7 @@ namespace LumbarMassageTest.Models
             channel.HighPressureExhaustValve = false;
             channel.LowPressureInletValve = false;
             channel.LowPressureExhaustValve = false;
+            channel.PressureTransducerIsolationValve = false;
             channel.UpInflateDownDeflate = false;
             channel.DownInflateUpDeflate = false;
             channel.BothInflate = false;
@@ -1093,6 +1140,7 @@ namespace LumbarMassageTest.Models
         private ChannelConfig _channel3Config = new() { ChannelName = "通道3" };
         private ChannelConfig _channel4Config = new() { ChannelName = "通道4" };
         private CurrentSleepConfig _currentSleepConfig = new();
+        private AirLeakTestSettings _airLeakTestSettings = new();
         private TestProcessConfig _processConfig = new();
 
         public string ModelName
@@ -1211,6 +1259,20 @@ namespace LumbarMassageTest.Models
             }
         }
 
+        public AirLeakTestSettings AirLeakTestSettings
+        {
+            get => _airLeakTestSettings;
+            set
+            {
+                var newValue = value ?? _airLeakTestSettings;
+                if (!ReferenceEquals(_airLeakTestSettings, newValue))
+                {
+                    _airLeakTestSettings = newValue;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public TestProcessConfig ProcessConfig
         {
             get => _processConfig;
@@ -1321,7 +1383,8 @@ namespace LumbarMassageTest.Models
         public int HighStabilizeDurationMs { get; set; } = 2000;
         public int HighDetectDurationMs { get; set; } = 5000;
         public int HighExhaustDurationMs { get; set; } = 3000;
-        public double HighMaxDropKPa { get; set; } = 1.0;
+        public double GrossLeakThresholdKPa { get; set; } = 10.0;
+        public double TargetPressureKPa { get; set; } = 100.0;
         public double HighOutputPressureKPa { get; set; } = 100;
         public int LowInflateDurationMs { get; set; } = 3000;
         public int LowStabilizeDurationMs { get; set; } = 2000;
@@ -1337,7 +1400,7 @@ namespace LumbarMassageTest.Models
         public bool Enabled { get; set; } = true;
         public int InputRegisterAddress { get; set; } = 40097;
         public int OutputRegisterAddress { get; set; } = 40023;
-        public int ZeroRaw { get; set; } = 0;
+        public int ZeroRaw { get; set; } = 4000;
         public int FullScaleRaw { get; set; } = 20000;
         public double PressureZeroKPa { get; set; } = 0;
         public double PressureFullScaleKPa { get; set; } = 0;
@@ -1513,6 +1576,7 @@ namespace LumbarMassageTest.Models
         public string HighPressureExhaustValveAddress { get; set; } = string.Empty;
         public string LowPressureInletValveAddress { get; set; } = string.Empty;
         public string LowPressureExhaustValveAddress { get; set; } = string.Empty;
+        public string PressureTransducerIsolationValveAddress { get; set; } = string.Empty;
     }
 
     public class TestProcessConfig
@@ -1520,7 +1584,6 @@ namespace LumbarMassageTest.Models
         private int _modeSwitchPowerOffDuration = 5000;
 
         public bool EnableBarcodeCheck { get; set; } = true;
-        public int MaxTestCount { get; set; } = 3;
         public bool EnableCurrentMonitoring { get; set; } = true;
         public bool RecordCurrentBeforeStart { get; set; } = false;
         public bool CheckSameModel { get; set; } = true;
@@ -1558,6 +1621,7 @@ namespace LumbarMassageTest.Models
         public List<LumbarActionResult> LumbarResults { get; set; } = new List<LumbarActionResult>();
         public List<MassagePointResult> MassageResults { get; set; } = new List<MassagePointResult>();
         public List<AirLeakPressureResult> AirLeakResults { get; set; } = new List<AirLeakPressureResult>();
+        public string LowPressureDropDisplay => FormatPressureDrop(GetAirLeakResult("Pa", "低压"));
         public List<TestStageResult> StageResults { get; set; } = new List<TestStageResult>();
         public List<CurrentMeasurement> CurrentTimeline { get; set; } = new List<CurrentMeasurement>();
 
@@ -1573,6 +1637,20 @@ namespace LumbarMassageTest.Models
         public string FailReason { get; set; }
         public double TestDuration { get; set; }
         public bool WasAborted { get; set; }
+
+        private AirLeakPressureResult? GetAirLeakResult(string unit, string phaseKeyword)
+        {
+            if (AirLeakResults == null || AirLeakResults.Count == 0)
+            {
+                return null;
+            }
+
+            return AirLeakResults.FirstOrDefault(r => string.Equals(r.Unit, unit, StringComparison.OrdinalIgnoreCase))
+                ?? AirLeakResults.FirstOrDefault(r => (r.Phase ?? string.Empty).Contains(phaseKeyword, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static string FormatPressureDrop(AirLeakPressureResult? result)
+            => result == null ? string.Empty : $"{result.PressureDrop:F2} {result.Unit}";
     }
 
     public class LumbarActionResult
@@ -1639,6 +1717,17 @@ namespace LumbarMassageTest.Models
         public int Channel { get; }
         public double PressureKPa { get; }
         public DateTime Timestamp { get; }
+    }
+    public class IsolationValveChangedEventArgs : EventArgs
+    {
+        public IsolationValveChangedEventArgs(int channel, bool isOpen)
+        {
+            Channel = channel;
+            IsOpen = isOpen;
+        }
+
+        public int Channel { get; }
+        public bool IsOpen { get; }
     }
     public class TestStageChangedEventArgs : EventArgs
     {
