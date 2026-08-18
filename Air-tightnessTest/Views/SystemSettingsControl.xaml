@@ -215,11 +215,11 @@
                     <TextBlock Text="通道数量" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" FontSize="16" />
                     <ComboBox x:Name="CmbChannelCount" Grid.Row="0" Grid.Column="1" Height="36" FontSize="16" />
 
-                    <TextBlock Text="输入量程KPa" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" FontSize="16" />
+                    <TextBlock Text="变送器量程KPa" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" FontSize="16" />
                     <TextBox x:Name="TxtPressureInputFullScale" Grid.Row="2" Grid.Column="1" Height="36" FontSize="16" />
                     <TextBlock Text="50-200" Grid.Row="2" Grid.Column="3" VerticalAlignment="Center" FontSize="14" Foreground="#4C566A" />
 
-                    <TextBlock Text="输出量程KPa" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" FontSize="16" />
+                    <TextBlock Text="比例阀量程KPa" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" FontSize="16" />
                     <TextBox x:Name="TxtPressureOutputFullScale" Grid.Row="4" Grid.Column="1" Height="36" FontSize="16" />
                     <TextBlock Text="100-200" Grid.Row="4" Grid.Column="3" VerticalAlignment="Center" FontSize="14" Foreground="#4C566A" />
 

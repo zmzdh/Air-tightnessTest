@@ -451,14 +451,14 @@ namespace LumbarMassageTest.UserControls
 
             if (!TryParsePressureRange(pressureInputFullScaleText, source.PressureInputFullScaleKPa, 50, 200, 100, out double pressureInputFullScale))
             {
-                errorMessage = "输入压力量程必须是 50-200 KPa 之间的数字";
+                errorMessage = "变送器量程必须是 50-200 KPa 之间的数字";
                 config = null!;
                 return false;
             }
 
             if (!TryParsePressureRange(pressureOutputFullScaleText, source.PressureOutputFullScaleKPa, 100, 200, 100, out double pressureOutputFullScale))
             {
-                errorMessage = "模拟输出量程必须是 100-200 KPa 之间的数字";
+                errorMessage = "比例阀量程必须是 100-200 KPa 之间的数字";
                 config = null!;
                 return false;
             }

@@ -127,7 +127,8 @@ namespace LumbarMassageTest.Services
                 ? config.PressureFullScaleKPa
                 : defaultFullScaleKPa;
 
-            raw = Math.Clamp(raw, MinRaw, MaxRaw);
+            int minReadableRaw = Math.Min(MinRaw, zeroRaw);
+            raw = Math.Clamp(raw, minReadableRaw, MaxRaw);
             double ratio = (raw - zeroRaw) / (double)(fullScaleRaw - zeroRaw);
             ratio = Math.Clamp(ratio, 0, 1);
             return zeroPressure + ratio * (fullScalePressure - zeroPressure);
