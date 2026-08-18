@@ -40,6 +40,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="AirTightness_icon.png" />
     <Resource Include="&#x8212;&#x4E95;logo.jpg" />
   </ItemGroup>
 
