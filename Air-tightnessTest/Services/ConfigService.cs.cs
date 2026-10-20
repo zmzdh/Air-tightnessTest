@@ -136,6 +136,7 @@ namespace LumbarMassageTest.Services
                         EnsureChannelConfigDefaults(model.Channel4Config);
                         EnsureCurrentSleepConfigDefaults(model);
                         EnsureAirLeakSettingsDefaults(model);
+                        EnsureLabelPrintSettingsDefaults(model);
                         ApplyCurrentSleepConfigToChannels(model);
                         ApplyAirLeakSettingsToChannels(model);
                         models.Add(model);
@@ -471,6 +472,7 @@ namespace LumbarMassageTest.Services
                 ImagePath = string.Empty,
                 CurrentSleepConfig = currentSleepConfig,
                 AirLeakTestSettings = new AirLeakTestSettings(),
+                LabelPrintSettings = new LabelPrintSettings(),
                 ProcessConfig = new TestProcessConfig
                 {
                     EnableBarcodeCheck = true,
@@ -746,6 +748,23 @@ namespace LumbarMassageTest.Services
             {
                 model.CurrentSleepConfig = CurrentSleepConfig.FromChannel(model.Channel1Config);
             }
+        }
+
+        private static void EnsureLabelPrintSettingsDefaults(ProductModel model)
+        {
+            model.LabelPrintSettings ??= new LabelPrintSettings();
+            var settings = model.LabelPrintSettings;
+            settings.TemplateCode ??= string.Empty;
+            settings.ProductName ??= string.Empty;
+            settings.PartNumber ??= string.Empty;
+            settings.RevisionCode ??= string.Empty;
+            settings.HardwareVersion ??= string.Empty;
+            settings.SoftwareVersion ??= string.Empty;
+            settings.DrawingVersion ??= string.Empty;
+            settings.VehicleModelCode ??= string.Empty;
+            settings.SupplierCode ??= string.Empty;
+            settings.SideLabel ??= string.Empty;
+            settings.ShiftCode ??= string.Empty;
         }
 
         private static void EnsureAirLeakSettingsDefaults(ProductModel model)

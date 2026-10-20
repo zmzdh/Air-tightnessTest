@@ -14,6 +14,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
 using System.Threading.Tasks;
+using LabelTemplateService = LabelTransPrint.Services.LabelTemplateService;
 
 namespace LumbarMassageTest.UserControls
 {
@@ -31,10 +32,12 @@ namespace LumbarMassageTest.UserControls
         private MassageTestSettings _massageSettings = new MassageTestSettings();
 
         private MessageConfig _messageConfig = new MessageConfig();
+        private readonly LabelTemplateService _labelTemplateService = new();
         private readonly List<string> _lumbarAddressWarnings = new List<string>();
         private const int MaxMassagePointCount = 32;
 
         public List<LumbarActionOption> LumbarActionList { get; set; }
+        public ObservableCollection<string> PrintTemplateCodes { get; } = new();
         public List<MessageKeyTriggerModeOption> MessageKeyTriggerModeOptions { get; } = new()
         {
             new MessageKeyTriggerModeOption(MessageKeyTriggerMode.Continuous, "连续"),
@@ -51,9 +54,25 @@ namespace LumbarMassageTest.UserControls
             LoadProductModels();
 
             DataContext = this;
+            RefreshPrintTemplateCodes();
             InitializeMessageKeyTriggerModeColumn();
             ConfigureAirLeakInputState();
             ApplyChannelColumnVisibility();
+        }
+
+        public void RefreshPrintTemplateCodes()
+        {
+            var selected = CmbPrintTemplate?.SelectedItem as string;
+            PrintTemplateCodes.Clear();
+            foreach (var code in _labelTemplateService.GetTemplateCodes())
+            {
+                PrintTemplateCodes.Add(code);
+            }
+
+            if (!string.IsNullOrWhiteSpace(selected) && PrintTemplateCodes.Contains(selected))
+            {
+                CmbPrintTemplate.SelectedItem = selected;
+            }
         }
 
         private void ConfigureAirLeakInputState()
@@ -515,6 +534,14 @@ namespace LumbarMassageTest.UserControls
             TxtPowerOffDuration.Text = process.ModeSwitchPowerOffDuration.ToString();
             UpdateLumbarConfigVisibility(process.EnableLumbarTest);
 
+            var printSettings = _currentModel.LabelPrintSettings ?? new LabelPrintSettings();
+            _currentModel.LabelPrintSettings = printSettings;
+            RefreshPrintTemplateCodes();
+            ChkEnablePrinting.IsChecked = printSettings.EnablePrinting;
+            CmbPrintTemplate.SelectedItem = PrintTemplateCodes.FirstOrDefault(code =>
+                string.Equals(code, printSettings.TemplateCode, StringComparison.OrdinalIgnoreCase));
+            CmbPrintTemplate.Text = printSettings.TemplateCode ?? string.Empty;
+
             _currentModel.Channel1Config ??= new ChannelConfig { ChannelName = "通道1" };
             _currentModel.Channel2Config ??= new ChannelConfig { ChannelName = "通道2" };
             _currentModel.Channel3Config ??= new ChannelConfig { ChannelName = "通道3" };
@@ -878,6 +905,15 @@ namespace LumbarMassageTest.UserControls
                 process.MeasureStaticCurrent = false;
                 process.ModeSwitchPowerOffDuration = 0;
                 _currentModel.ProcessConfig = process;
+
+                var printSettings = _currentModel.LabelPrintSettings ?? new LabelPrintSettings();
+                printSettings.EnablePrinting = ChkEnablePrinting.IsChecked == true;
+                printSettings.TemplateCode = (CmbPrintTemplate.SelectedItem as string ?? CmbPrintTemplate.Text ?? string.Empty).Trim();
+                if (printSettings.EnablePrinting && string.IsNullOrWhiteSpace(printSettings.TemplateCode))
+                {
+                    throw new InvalidOperationException("启用自动打印时必须选择打印模板。");
+                }
+                _currentModel.LabelPrintSettings = printSettings;
 
                 _currentModel.Channel1Config ??= new ChannelConfig { ChannelName = "通道1" };
                 _currentModel.Channel2Config ??= new ChannelConfig { ChannelName = "通道2" };

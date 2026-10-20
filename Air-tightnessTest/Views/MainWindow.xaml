@@ -80,6 +80,8 @@
                                 Click="BtnManual_Click"/>
                         <Button Name="BtnModel" Content="机型配方" Style="{StaticResource NavButtonStyle}" 
                                 Click="BtnModel_Click"/>
+                        <Button Name="BtnPrintTemplate" Content="标签打印" Style="{StaticResource NavButtonStyle}"
+                                Click="BtnPrintTemplate_Click"/>
                         <Button Name="BtnReport" Content="生产报表" Style="{StaticResource NavButtonStyle}" 
                                 Click="BtnReport_Click"/>
                         <Button Name="BtnUser" Content="用户管理" Style="{StaticResource NavButtonStyle}"

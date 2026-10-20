@@ -88,6 +88,17 @@
                         </Grid>
                     </GroupBox>
 
+                    <GroupBox Header="标签打印配置" Margin="0,0,0,20">
+                        <StackPanel Margin="10">
+                            <CheckBox Name="ChkEnablePrinting" Content="检测合格后自动打印标签" Margin="5"/>
+                            <StackPanel Orientation="Horizontal" Margin="5">
+                                <TextBlock Text="打印模板:" Width="90" VerticalAlignment="Center"/>
+                                <ComboBox Name="CmbPrintTemplate" Width="260" Height="25" IsEditable="True"
+                                          ItemsSource="{Binding PrintTemplateCodes}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </GroupBox>
+
                     <!-- 通道配置 -->
                     <StackPanel Margin="0,0,0,20">
                         <GroupBox Header="报文配置" Margin="0,0,0,15" Visibility="Collapsed">

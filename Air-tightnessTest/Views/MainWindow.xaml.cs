@@ -23,6 +23,7 @@ namespace LumbarMassageTest
         private readonly DatabaseService _dbService;
         private readonly ConfigService _configService;
         private readonly TestService _testService;
+        private readonly LabelPrintService _labelPrintService;
         private readonly MesService _mesService;
         private readonly ModbusServerService _modbusService;
         private readonly ILogService _logService;
@@ -39,6 +40,7 @@ namespace LumbarMassageTest
         private TestControl _testControl;
         private ManualControl _manualControl;
         private ModelConfigControl _modelControl;
+        private PrintTemplateControl _printTemplateControl;
         private ReportControl _reportControl;
         private UserManagementControl _userControl;
         private SystemSettingsControl _systemSettingsControl;
@@ -76,6 +78,7 @@ namespace LumbarMassageTest
             _dbService = new DatabaseService(_logService);
             _configService = new ConfigService(_logService);
             _testService = new TestService(_plcService, _logService);
+            _labelPrintService = new LabelPrintService(_configService, _logService);
             _mesService = new MesService(_logService);
             _modbusService = new ModbusServerService(_logService);
             _licenseService = new LicenseService(_logService);
@@ -87,6 +90,7 @@ namespace LumbarMassageTest
             _testService.OnTestStageChanged += TestService_OnStageChanged;
             _testService.OnTestCompleted += TestService_OnTestCompleted;
             _testService.OnTestCompleted += TestService_OnTestCompletedSaveRecord;
+            _testService.OnTestCompleted += TestService_OnTestCompletedPrintLabel;
 
             foreach (var channel in new[] { 1, 2, 3, 4 })
             {
@@ -206,6 +210,23 @@ namespace LumbarMassageTest
             }
         }
 
+        private async void TestService_OnTestCompletedPrintLabel(object? sender, TestRecord record)
+        {
+            try
+            {
+                var result = await _labelPrintService.PrintIfEnabledAsync(record).ConfigureAwait(false);
+                if (result.PrintJobSent)
+                {
+                    await Dispatcher.InvokeAsync(() => TxtStatus.Text = result.Message);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError("合格标签打印失败", ex);
+                await Dispatcher.InvokeAsync(() => TxtStatus.Text = $"标签打印失败: {ex.Message}");
+            }
+        }
+
         private void TestService_OnStageChanged(object sender, TestStageChangedEventArgs e)
         {
 
@@ -320,6 +341,7 @@ namespace LumbarMassageTest
             Test,
             Manual,
             Model,
+            PrintTemplate,
             Report,
             UserManagement,
             SystemSettings,
@@ -331,6 +353,7 @@ namespace LumbarMassageTest
             ConfigureButtonAccess(BtnTest, HasPermission(Permission.Test));
             ConfigureButtonAccess(BtnManual, HasPermission(Permission.Manual));
             ConfigureButtonAccess(BtnModel, HasPermission(Permission.Model));
+            ConfigureButtonAccess(BtnPrintTemplate, HasPermission(Permission.PrintTemplate));
             ConfigureButtonAccess(BtnReport, HasPermission(Permission.Report));
             ConfigureButtonAccess(BtnUser, HasPermission(Permission.UserManagement));
             ConfigureButtonAccess(BtnSystemSettings, HasPermission(Permission.SystemSettings));
@@ -376,6 +399,7 @@ namespace LumbarMassageTest
             {
                 "Admin" => true,
                 "Engineer" => permission != Permission.UserManagement &&
+                               permission != Permission.PrintTemplate &&
                                permission != Permission.SystemSettings &&
                                permission != Permission.SystemLog,
                 "Operator" => permission == Permission.Test || permission == Permission.Report,
@@ -1208,6 +1232,16 @@ namespace LumbarMassageTest
             ShowModelControl();
         }
 
+        private void BtnPrintTemplate_Click(object sender, RoutedEventArgs e)
+        {
+            if (!EnsurePermission(Permission.PrintTemplate))
+            {
+                return;
+            }
+
+            ShowPrintTemplateControl();
+        }
+
         private void BtnReport_Click(object sender, RoutedEventArgs e)
         {
             if (!EnsurePermission(Permission.Report))
@@ -1315,6 +1349,26 @@ namespace LumbarMassageTest
             {
                 _logService.LogError("加载机型控件失败", ex);
                 MessageBox.Show($"加载机型控件失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ShowPrintTemplateControl()
+        {
+            try
+            {
+                if (_printTemplateControl == null)
+                {
+                    _printTemplateControl = new PrintTemplateControl(_configService, _logService);
+                    _printTemplateControl.TemplatesChanged += (_, _) => _modelControl?.RefreshPrintTemplateCodes();
+                }
+                MainContentControl.Content = _printTemplateControl;
+                ResetButtonStyles();
+                BtnPrintTemplate.Background = GetNavBrush("NavButtonSelectedBrush");
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError("加载标签打印配置失败", ex);
+                MessageBox.Show($"加载标签打印配置失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1427,6 +1481,7 @@ namespace LumbarMassageTest
             BtnTest.Background = defaultBrush;
             BtnManual.Background = defaultBrush;
             BtnModel.Background = defaultBrush;
+            BtnPrintTemplate.Background = defaultBrush;
             BtnReport.Background = defaultBrush;
             BtnUser.Background = defaultBrush;
             BtnSystemSettings.Background = defaultBrush;
@@ -1489,6 +1544,7 @@ namespace LumbarMassageTest
                 _testService.OnTestStageChanged -= TestService_OnStageChanged;
                 _testService.OnTestCompleted -= TestService_OnTestCompleted;
                 _testService.OnTestCompleted -= TestService_OnTestCompletedSaveRecord;
+                _testService.OnTestCompleted -= TestService_OnTestCompletedPrintLabel;
             }
 
             // 清理资源

@@ -38,6 +38,7 @@ namespace LumbarMassageTest.Models
         public MesIntegrationMode MesIntegrationMode { get; set; } = MesIntegrationMode.HttpPush;
         public string ModbusServerIp { get; set; } = "0.0.0.0";
         public int ModbusServerPort { get; set; } = 502;
+        public string PrinterName { get; set; } = string.Empty;
         public SerialPortConfig SerialDevice1 { get; set; } = SerialPortConfig.CreateDefaultDevice1();
         public SerialPortConfig SerialDevice2 { get; set; } = SerialPortConfig.CreateDefaultDevice2();
         public int ChannelCount { get; set; } = 4;
@@ -66,6 +67,7 @@ namespace LumbarMassageTest.Models
         public MesIntegrationMode MesIntegrationMode { get; set; } = MesIntegrationMode.HttpPush;
         public string ModbusServerIp { get; set; } = "0.0.0.0";
         public int ModbusServerPort { get; set; } = 502;
+        public string PrinterName { get; set; } = string.Empty;
         public SerialPortConfig SerialDevice1 { get; set; } = SerialPortConfig.CreateDefaultDevice1();
         public SerialPortConfig SerialDevice2 { get; set; } = SerialPortConfig.CreateDefaultDevice2();
         public int ChannelCount { get; set; } = 4;
@@ -1142,6 +1144,7 @@ namespace LumbarMassageTest.Models
         private CurrentSleepConfig _currentSleepConfig = new();
         private AirLeakTestSettings _airLeakTestSettings = new();
         private TestProcessConfig _processConfig = new();
+        private LabelPrintSettings _labelPrintSettings = new();
 
         public string ModelName
         {
@@ -1285,6 +1288,16 @@ namespace LumbarMassageTest.Models
                     _processConfig = newValue;
                     OnPropertyChanged();
                 }
+            }
+        }
+
+        public LabelPrintSettings LabelPrintSettings
+        {
+            get => _labelPrintSettings;
+            set
+            {
+                _labelPrintSettings = value ?? new LabelPrintSettings();
+                OnPropertyChanged();
             }
         }
 
@@ -1600,6 +1613,22 @@ namespace LumbarMassageTest.Models
             get => _modeSwitchPowerOffDuration;
             set => _modeSwitchPowerOffDuration = Math.Max(0, value);
         }
+    }
+
+    public class LabelPrintSettings
+    {
+        public bool EnablePrinting { get; set; }
+        public string TemplateCode { get; set; } = string.Empty;
+        public string ProductName { get; set; } = string.Empty;
+        public string PartNumber { get; set; } = string.Empty;
+        public string RevisionCode { get; set; } = string.Empty;
+        public string HardwareVersion { get; set; } = string.Empty;
+        public string SoftwareVersion { get; set; } = string.Empty;
+        public string DrawingVersion { get; set; } = string.Empty;
+        public string VehicleModelCode { get; set; } = string.Empty;
+        public string SupplierCode { get; set; } = string.Empty;
+        public string SideLabel { get; set; } = string.Empty;
+        public string ShiftCode { get; set; } = string.Empty;
     }
 
     public class TestRecord
