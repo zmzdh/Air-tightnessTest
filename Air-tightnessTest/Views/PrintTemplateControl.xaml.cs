@@ -252,9 +252,11 @@ public partial class PrintTemplateControl : UserControl
 
         try
         {
-            var template = JsonSerializer.Deserialize<LabelTemplate>(
-                File.ReadAllText(dialog.FileName), TemplateJsonOptions)
-                ?? throw new InvalidOperationException("模板文件无效。");
+            var imported = LabelTemplateImport.Parse(File.ReadAllText(dialog.FileName));
+            var template = imported.Template;
+            if (imported.Warnings.Count > 0 && MessageBox.Show(string.Join("\n", imported.Warnings) + "\n\n继续导入？",
+                    "模板兼容提示", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
 
             if (string.IsNullOrWhiteSpace(template.TemplateCode))
             {
@@ -621,8 +623,13 @@ public partial class PrintTemplateControl : UserControl
             context.ShiftCode = UseConfiguredOrSample(settings.ShiftCode, context.ShiftCode);
         }
 
-        context.SequenceCode = Math.Max(1, _previewSequenceNumber).ToString("D5");
+        var uses5 = template != null && (LabelTemplateService.UsesField(template.Elements, LabelTemplateService.SequenceCode5Token)
+            || (string.Equals(template.QrPayloadMode, "Custom", StringComparison.OrdinalIgnoreCase)
+                && template.QrPayloadExpression.Contains(LabelTemplateService.SequenceCode5Token, StringComparison.OrdinalIgnoreCase)));
+        context.SequenceCode = Math.Max(1, _previewSequenceNumber).ToString(uses5 ? "D5" : "D4");
         context.ProductionDate = DateTime.Today;
+        context.FieldValues = context.ToProductionContext().CreateFields();
+        context.Fields = _templateService.Fields.Concat(ProductionLabelContext.Fields).ToArray();
         return context;
     }
 

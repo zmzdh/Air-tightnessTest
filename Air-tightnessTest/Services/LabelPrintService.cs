@@ -48,7 +48,8 @@ public sealed class LabelPrintService
         var template = _templateService.TryLoad(settings.TemplateCode)
             ?? throw new InvalidOperationException($"打印模板不存在：{settings.TemplateCode}");
 
-        string sequenceCode = BuildSequenceCode(record);
+        string sequenceCode = BuildSequenceCode(record, template);
+        SequenceCodeValidator.ValidateTemplate(template, sequenceCode, requireSequenceCode: true);
         string originalCode = record.ProductCode ?? string.Empty;
         string fallbackPayload = string.IsNullOrWhiteSpace(originalCode)
             ? $"{settings.PartNumber}-{record.TestTime:yyyyMMdd}-{sequenceCode}"
@@ -120,10 +121,13 @@ public sealed class LabelPrintService
             string.Equals(model.ModelName, modelName, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static string BuildSequenceCode(TestRecord record)
+    private static string BuildSequenceCode(TestRecord record, LabelTransPrint.Models.LabelTemplate template)
     {
         var source = record.TestCount > 0 ? record.TestCount : 1;
-        return source.ToString("D5");
+        var uses5 = LabelTemplateService.UsesField(template.Elements, LabelTemplateService.SequenceCode5Token)
+            || (string.Equals(template.QrPayloadMode, "Custom", StringComparison.OrdinalIgnoreCase)
+                && template.QrPayloadExpression.Contains(LabelTemplateService.SequenceCode5Token, StringComparison.OrdinalIgnoreCase));
+        return source.ToString(uses5 ? "D5" : "D4");
     }
 }
 
