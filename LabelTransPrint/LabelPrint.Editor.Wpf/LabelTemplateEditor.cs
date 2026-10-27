@@ -15,25 +15,18 @@ public static class LabelTemplateEditor
         var editor = new LabelTemplateEditorWindow(
             template,
             templateService,
-            context.OriginalCode,
-            context.NewCode,
-            context.Title,
-            context.ProjectCode,
-            context.ProductName,
-            context.SideLabel,
+            context.ProductTitle,
             context.PartNumber,
-            context.RevisionCode,
-            context.HardwareVersion,
-            context.SoftwareVersion,
-            context.DrawingVersion,
-            context.VehicleModelCode,
-            context.SupplierCode,
+            context.BackupField1,
+            context.BackupField2,
             context.SequenceCode,
-            context.ShiftCode,
-            context.ProductionDate);
-
-        if (owner is not null)
-            editor.Owner = owner;
+            context.ProductionDate,
+            context.OperatorName,
+            context.FieldValues,
+            context.Fields)
+        {
+            Owner = owner
+        };
 
         var accepted = editor.ShowDialog() == true;
         return new LabelTemplateEditorResult(accepted, accepted ? editor.EditedTemplate : template);

@@ -15,10 +15,16 @@ public class LabelPrinterHelper
 {
     private readonly PrintDocument _printDocument;
     private Bitmap? _preparedBitmap;
+    private BatchPrintContext? _batchPrintContext;
+    private int _batchPageIndex;
 
-    private const float Dpi = 300f;
+    private const float DefaultDpi = 300f;
     private const float MmToInch = 25.4f;
+    private const float PointsPerInch = 72f;
     private const float LogoImageScale = 1.18f;
+    private const string DefaultFontFamily = "Microsoft YaHei UI";
+    private float _renderDpiX = DefaultDpi;
+    private float _renderDpiY = DefaultDpi;
     private static readonly HashSet<string> InstalledFontNames = new InstalledFontCollection()
         .Families
         .Select(f => f.Name)
@@ -28,6 +34,10 @@ public class LabelPrinterHelper
     public double LabelWidthMm { get; set; } = 40;
     public double LabelHeightMm { get; set; } = 20;
     public double TextScale { get; set; } = 1.0;
+    public double ImageScale { get; set; } = LogoImageScale;
+    public double OffsetXmm { get; set; }
+    public double OffsetYmm { get; set; }
+    public int? DpiOverride { get; set; }
 
     public LabelPrinterHelper(string printerName)
     {
@@ -39,80 +49,138 @@ public class LabelPrinterHelper
 
     public void Print(
         IEnumerable<LabelElement> elements,
-        string originalCode,
-        string newCode,
         string title,
-        string projectCode,
-        string productName,
-        string sideLabel,
         string partNumber,
-        string revisionCode,
-        string hardwareVersion,
-        string softwareVersion,
-        string drawingVersion,
-        string vehicleModelCode,
-        string supplierCode,
+        string backupField1,
+        string backupField2,
         string sequenceCode,
-        string shiftCode,
-        DateTime productionDate)
+        DateTime productionDate,
+        string operatorName)
     {
-        _preparedBitmap = GenerateLabelBitmap(
-            elements,
-            originalCode,
-            newCode,
+        var items = elements.ToList();
+        SequenceCodeValidator.Validate(items, sequenceCode);
+        ConfigurePrintDocument();
+        try
+        {
+            _preparedBitmap = GenerateLabelBitmap(
+                items,
+                title,
+                partNumber,
+                backupField1,
+                backupField2,
+                sequenceCode,
+                productionDate,
+                operatorName);
+
+            _printDocument.Print();
+        }
+        finally
+        {
+            _preparedBitmap?.Dispose();
+            _preparedBitmap = null;
+        }
+    }
+
+    public void PrintBatch(
+        IEnumerable<LabelElement> elements,
+        string title,
+        string partNumber,
+        string backupField1,
+        string backupField2,
+        IReadOnlyList<string> sequenceCodes,
+        DateTime productionDate,
+        string operatorName)
+    {
+        if (sequenceCodes.Count == 0)
+            return;
+
+        var items = elements.ToList();
+        foreach (var sequenceCode in sequenceCodes)
+            SequenceCodeValidator.Validate(items, sequenceCode);
+
+        ConfigurePrintDocument();
+        _batchPrintContext = new BatchPrintContext(
+            items,
             title,
-            projectCode,
-            productName,
-            sideLabel,
             partNumber,
-            revisionCode,
-            hardwareVersion,
-            softwareVersion,
-            drawingVersion,
-            vehicleModelCode,
-            supplierCode,
-            sequenceCode,
-            shiftCode,
-            productionDate);
+            backupField1,
+            backupField2,
+            sequenceCodes.ToArray(),
+            productionDate,
+            operatorName);
+        _batchPageIndex = 0;
 
-        _printDocument.PrinterSettings.PrinterName = PrinterName;
-        if (!_printDocument.PrinterSettings.IsValid)
-            throw new InvalidOperationException($"找不到打印机: {PrinterName}");
-
-        var paperSize = new PaperSize("Custom",
-            (int)(LabelWidthMm / MmToInch * 100),
-            (int)(LabelHeightMm / MmToInch * 100));
-
-        _printDocument.DefaultPageSettings.PaperSize = paperSize;
-        _printDocument.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
-        _printDocument.Print();
+        try
+        {
+            _printDocument.Print();
+        }
+        finally
+        {
+            _batchPrintContext = null;
+            _batchPageIndex = 0;
+        }
     }
 
     public Bitmap GenerateLabelBitmap(
         IEnumerable<LabelElement> elements,
-        string originalCode,
-        string newCode,
         string title,
-        string projectCode,
-        string productName,
-        string sideLabel,
         string partNumber,
-        string revisionCode,
-        string hardwareVersion,
-        string softwareVersion,
-        string drawingVersion,
-        string vehicleModelCode,
-        string supplierCode,
+        string backupField1,
+        string backupField2,
         string sequenceCode,
-        string shiftCode,
-        DateTime productionDate)
+        DateTime productionDate,
+        string operatorName)
+        => GenerateLabelBitmapCore(elements, text => TemplateEngine.Resolve(text, title, partNumber, backupField1,
+            backupField2, sequenceCode, productionDate, operatorName));
+
+    /// <summary>Renders application-defined field values without applying a sequence-number policy.</summary>
+    public Bitmap GenerateLabelBitmap(IEnumerable<LabelElement> elements, LabelFieldValues values)
     {
-        int widthPx = (int)Math.Round(LabelWidthMm / MmToInch * Dpi);
-        int heightPx = (int)Math.Round(LabelHeightMm / MmToInch * Dpi);
-        float scale = Dpi / MmToInch;
+        ArgumentNullException.ThrowIfNull(values);
+        return GenerateLabelBitmapCore(elements, values.Resolve);
+    }
+
+    /// <summary>Prints using application-defined fields after validating required fields and sequence numbers.</summary>
+    public void Print(IEnumerable<LabelElement> elements, LabelFieldValues values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        var items = elements.ToList();
+        var missing = items.Where(item => item.Type is LabelElementType.Text or LabelElementType.QrCode or LabelElementType.Barcode or LabelElementType.Image)
+            .SelectMany(item => values.FindMissing(item.Type == LabelElementType.Image && !string.IsNullOrWhiteSpace(item.ImagePath)
+                ? item.ImagePath : item.ContentTemplate)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        if (missing.Length > 0)
+            throw new InvalidOperationException($"缺少打印字段：{string.Join("、", missing)}");
+        var sequenceToken = LabelTemplateService.UsesField(items, LabelTemplateService.SequenceCode5Token)
+            ? LabelTemplateService.SequenceCode5Token : LabelTemplateService.SequenceCodeToken;
+        values.TryGetValue(sequenceToken, out var sequenceCode);
+        if (sequenceCode is null && sequenceToken == LabelTemplateService.SequenceCodeToken)
+            values.TryGetValue(LabelTemplateService.LegacySequenceCodeToken, out sequenceCode);
+        SequenceCodeValidator.Validate(items, sequenceCode);
+        ConfigurePrintDocument();
+        try
+        {
+            _preparedBitmap = GenerateLabelBitmap(items, values);
+            _printDocument.Print();
+        }
+        finally
+        {
+            _preparedBitmap?.Dispose();
+            _preparedBitmap = null;
+        }
+    }
+
+    private Bitmap GenerateLabelBitmapCore(IEnumerable<LabelElement> elements, Func<string?, string> resolve)
+    {
+        ApplyRenderResolution(requireValidPrinter: false);
+
+        int widthPx = (int)Math.Round(LabelWidthMm / MmToInch * _renderDpiX);
+        int heightPx = (int)Math.Round(LabelHeightMm / MmToInch * _renderDpiY);
+        float scaleX = _renderDpiX / MmToInch;
+        float scaleY = _renderDpiY / MmToInch;
+        float lineScale = (scaleX + scaleY) / 2f;
 
         var bitmap = new Bitmap(widthPx, heightPx);
-        bitmap.SetResolution(Dpi, Dpi);
+        bitmap.SetResolution(_renderDpiX, _renderDpiY);
 
         using var g = Graphics.FromImage(bitmap);
         g.SmoothingMode = SmoothingMode.HighQuality;
@@ -123,32 +191,15 @@ public class LabelPrinterHelper
 
         foreach (var element in elements)
         {
-            float x = (float)(element.X * scale);
-            float y = (float)(element.Y * scale);
-            float w = (float)(element.Width * scale);
-            float h = (float)(element.Height * scale);
+            float x = (float)(element.X * scaleX);
+            float y = (float)(element.Y * scaleY);
+            float w = (float)(element.Width * scaleX);
+            float h = (float)(element.Height * scaleY);
 
             if (element.Type == LabelElementType.Text)
             {
-                string text = TemplateEngine.Resolve(
-                    element.ContentTemplate,
-                    originalCode,
-                    newCode,
-                    title,
-                    projectCode,
-                    productName,
-                    sideLabel,
-                    partNumber,
-                    revisionCode,
-                    hardwareVersion,
-                    softwareVersion,
-                    drawingVersion,
-                    vehicleModelCode,
-                    supplierCode,
-                    sequenceCode,
-                    shiftCode,
-                    productionDate);
-                float baseEm = Math.Max(4.5f, (float)(element.FontSize * scale / 4.0 * TextScale));
+                string text = resolve(element.ContentTemplate);
+                float baseEm = Math.Max(4.0f, (float)(element.FontSize / MmToInch * PointsPerInch * TextScale));
                 using var brush = new SolidBrush(Color.Black);
                 using var format = CreateStringFormatForElement(element);
                 float em = CalculateFittingFontSize(g, element, text, format, w, h, baseEm);
@@ -157,65 +208,40 @@ public class LabelPrinterHelper
             }
             else if (element.Type == LabelElementType.QrCode)
             {
-                string qrContent = TemplateEngine.Resolve(
-                    element.ContentTemplate,
-                    originalCode,
-                    newCode,
-                    title,
-                    projectCode,
-                    productName,
-                    sideLabel,
-                    partNumber,
-                    revisionCode,
-                    hardwareVersion,
-                    softwareVersion,
-                    drawingVersion,
-                    vehicleModelCode,
-                    supplierCode,
-                    sequenceCode,
-                    shiftCode,
-                    productionDate);
-                using var qr = QrBitmapService.GenerateQRCode(qrContent, Math.Max(64, (int)Math.Max(w, h)));
+                string qrContent = resolve(element.ContentTemplate);
+                // 生成尺寸固定为参考值,与渲染 DPI 解耦,保证 200/300dpi 下二维码物理尺寸一致
+                int qrGenSize = Math.Max(300, Math.Min(1200, qrContent.Length * 24));
+                using var qr = QrBitmapService.GenerateQRCode(qrContent, qrGenSize, element.QrErrorCorrection, element.QrMargin);
                 if (qr != null)
                 {
+                    g.InterpolationMode = InterpolationMode.NearestNeighbor;
                     g.DrawImage(qr, x, y, w, h);
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
                 }
             }
             else if (element.Type == LabelElementType.Barcode)
             {
-                string barcodeContent = TemplateEngine.Resolve(
-                    element.ContentTemplate,
-                    originalCode,
-                    newCode,
-                    title,
-                    projectCode,
-                    productName,
-                    sideLabel,
-                    partNumber,
-                    revisionCode,
-                    hardwareVersion,
-                    softwareVersion,
-                    drawingVersion,
-                    vehicleModelCode,
-                    supplierCode,
-                    sequenceCode,
-                    shiftCode,
-                    productionDate);
+                string barcodeContent = resolve(element.ContentTemplate);
                 if (string.IsNullOrWhiteSpace(barcodeContent))
                     continue;
 
                 float textHeight = h * 0.25f;
                 float barcodeAreaHeight = Math.Max(10f, h - textHeight);
+                // 生成宽度固定为参考值,与渲染 DPI 解耦;否则 ZXing 按整数模块缩放并居中,
+                // 200/300dpi 下条码物理宽度会明显不一致
+                int barcodeGenWidth = Math.Max(600, barcodeContent.Length * 22);
                 using var barcode = BarcodeBitmapService.GenerateCode128(
                     barcodeContent,
-                    Math.Max(64, (int)Math.Round(w)),
+                    barcodeGenWidth,
                     Math.Max(16, (int)Math.Round(barcodeAreaHeight)));
                 if (barcode != null)
                 {
+                    g.InterpolationMode = InterpolationMode.NearestNeighbor;
                     g.DrawImage(barcode, x, y, w, barcodeAreaHeight);
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
                 }
 
-                float baseEm = Math.Max(4.5f, (float)(element.FontSize * scale / 4.0 * TextScale));
+                float baseEm = Math.Max(4.0f, (float)(element.FontSize / MmToInch * PointsPerInch * TextScale));
                 using var brush = new SolidBrush(Color.Black);
                 using var format = new StringFormat(StringFormat.GenericTypographic)
                 {
@@ -231,44 +257,73 @@ public class LabelPrinterHelper
             else if (element.Type == LabelElementType.Image)
             {
                 var rawImagePath = string.IsNullOrWhiteSpace(element.ImagePath) ? element.ContentTemplate : element.ImagePath;
-                var resolvedImagePath = TemplateEngine.Resolve(
-                    rawImagePath,
-                    originalCode,
-                    newCode,
-                    title,
-                    projectCode,
-                    productName,
-                    sideLabel,
-                    partNumber,
-                    revisionCode,
-                    hardwareVersion,
-                    softwareVersion,
-                    drawingVersion,
-                    vehicleModelCode,
-                    supplierCode,
-                    sequenceCode,
-                    shiftCode,
-                    productionDate);
+                var resolvedImagePath = resolve(rawImagePath);
                 var imagePath = ResolveImagePath(resolvedImagePath);
                 if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
                     continue;
 
                 using var image = Image.FromFile(imagePath);
-                var imageBounds = CreateCenteredScaledBounds(x, y, w, h, LogoImageScale);
+                var imageBounds = CreateCenteredScaledBounds(x, y, w, h, (float)ImageScale);
                 g.DrawImage(image, imageBounds);
             }
             else if (element.Type == LabelElementType.Line)
             {
-                using var pen = CreatePenForElement(element, scale);
+                using var pen = CreatePenForElement(element, lineScale);
                 g.DrawLine(pen, x, y, x + w, y + h);
             }
             else if (element.Type == LabelElementType.Table)
             {
-                DrawTable(g, element, x, y, w, h, scale);
+                DrawTable(g, element, x, y, w, h, scaleX, scaleY, lineScale);
             }
         }
 
         return bitmap;
+    }
+
+    private void ApplyRenderResolution(bool requireValidPrinter)
+    {
+        if (DpiOverride is > 0)
+        {
+            _renderDpiX = DpiOverride.Value;
+            _renderDpiY = DpiOverride.Value;
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(PrinterName))
+            _printDocument.PrinterSettings.PrinterName = PrinterName;
+
+        if (!_printDocument.PrinterSettings.IsValid)
+        {
+            if (requireValidPrinter)
+                throw new InvalidOperationException($"找不到打印机: {PrinterName}");
+
+            _renderDpiX = DefaultDpi;
+            _renderDpiY = DefaultDpi;
+            return;
+        }
+
+        var resolution = _printDocument.DefaultPageSettings.PrinterResolution;
+        _renderDpiX = NormalizeDpi(resolution.X);
+        _renderDpiY = NormalizeDpi(resolution.Y);
+    }
+
+    private static float NormalizeDpi(int dpi)
+        => dpi > 0 ? dpi : DefaultDpi;
+
+    private void ConfigurePrintDocument()
+    {
+        _printDocument.PrinterSettings.PrinterName = PrinterName;
+        if (!_printDocument.PrinterSettings.IsValid)
+            throw new InvalidOperationException($"找不到打印机: {PrinterName}");
+
+        ApplyRenderResolution(requireValidPrinter: true);
+
+        var paperSize = new PaperSize("Custom",
+            (int)(LabelWidthMm / MmToInch * 100),
+            (int)(LabelHeightMm / MmToInch * 100));
+
+        _printDocument.DefaultPageSettings.PaperSize = paperSize;
+        _printDocument.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
     }
 
     private static Pen CreatePenForElement(LabelElement element, float scale)
@@ -285,9 +340,9 @@ public class LabelPrinterHelper
         return pen;
     }
 
-    private static void DrawTable(Graphics graphics, LabelElement element, float x, float y, float width, float height, float scale)
+    private static void DrawTable(Graphics graphics, LabelElement element, float x, float y, float width, float height, float scaleX, float scaleY, float lineScale)
     {
-        using var pen = CreatePenForElement(element, scale);
+        using var pen = CreatePenForElement(element, lineScale);
         graphics.DrawRectangle(pen, x, y, width, height);
 
         var columns = NormalizeTableLines(element.TableColumnLines, element.ColumnWidths, element.ColumnCount, element.Width);
@@ -297,27 +352,27 @@ public class LabelPrinterHelper
 
         for (var lineIndex = 0; lineIndex < columns.Count; lineIndex++)
         {
-            var currentX = x + (float)(columns[lineIndex] * scale);
+            var currentX = x + (float)(columns[lineIndex] * scaleX);
             for (var segmentIndex = 0; segmentIndex < rowBands.Count; segmentIndex++)
             {
                 if (IsHiddenSegment(element.HiddenTableColumnSegments, lineIndex, segmentIndex))
                     continue;
 
                 var segment = rowBands[segmentIndex];
-                graphics.DrawLine(pen, currentX, y + (float)(segment.Start * scale), currentX, y + (float)(segment.End * scale));
+                graphics.DrawLine(pen, currentX, y + (float)(segment.Start * scaleY), currentX, y + (float)(segment.End * scaleY));
             }
         }
 
         for (var lineIndex = 0; lineIndex < rows.Count; lineIndex++)
         {
-            var currentY = y + (float)(rows[lineIndex] * scale);
+            var currentY = y + (float)(rows[lineIndex] * scaleY);
             for (var segmentIndex = 0; segmentIndex < columnBands.Count; segmentIndex++)
             {
                 if (IsHiddenSegment(element.HiddenTableRowSegments, lineIndex, segmentIndex))
                     continue;
 
                 var segment = columnBands[segmentIndex];
-                graphics.DrawLine(pen, x + (float)(segment.Start * scale), currentY, x + (float)(segment.End * scale), currentY);
+                graphics.DrawLine(pen, x + (float)(segment.Start * scaleX), currentY, x + (float)(segment.End * scaleX), currentY);
             }
         }
     }
@@ -413,66 +468,107 @@ public class LabelPrinterHelper
 
     private void PrintDocument_PrintPage(object? sender, PrintPageEventArgs e)
     {
-        if (_preparedBitmap == null || e.Graphics == null)
+        if (e.Graphics == null)
         {
             return;
         }
 
+        if (_batchPrintContext is not null)
+        {
+            PrintBatchPage(e);
+            return;
+        }
+
+        if (_preparedBitmap == null)
+            return;
+
+        DrawPreparedBitmap(e, _preparedBitmap);
+    }
+
+    private void PrintBatchPage(PrintPageEventArgs e)
+    {
+        var context = _batchPrintContext;
+        if (context is null || _batchPageIndex >= context.SequenceCodes.Count)
+        {
+            e.HasMorePages = false;
+            return;
+        }
+
+        using var bitmap = GenerateLabelBitmap(
+            context.Elements,
+            context.Title,
+            context.PartNumber,
+            context.BackupField1,
+            context.BackupField2,
+            context.SequenceCodes[_batchPageIndex],
+            context.ProductionDate,
+            context.OperatorName);
+
+        DrawPreparedBitmap(e, bitmap);
+        _batchPageIndex++;
+        e.HasMorePages = _batchPageIndex < context.SequenceCodes.Count;
+    }
+
+    private void DrawPreparedBitmap(PrintPageEventArgs e, Bitmap bitmap)
+    {
+        var graphics = e.Graphics;
+        if (graphics is null)
+            return;
+
         // PrintDocument 的 Graphics 默认单位不是像素，直接传入位图像素会导致缩放异常（常见现象：内容被放大并在右下角截断）。
         // 统一切到 Pixel，并抵消打印机硬边距，保证位图坐标与模板坐标一一对应。
-        e.Graphics.PageUnit = GraphicsUnit.Pixel;
-        e.Graphics.TranslateTransform(
-            -(e.PageSettings.HardMarginX / 100f * Dpi),
-            -(e.PageSettings.HardMarginY / 100f * Dpi));
+        graphics.PageUnit = GraphicsUnit.Pixel;
+        graphics.TranslateTransform(
+            -(e.PageSettings.HardMarginX / 100f * _renderDpiX) + (float)(OffsetXmm / MmToInch * _renderDpiX),
+            -(e.PageSettings.HardMarginY / 100f * _renderDpiY) + (float)(OffsetYmm / MmToInch * _renderDpiY));
 
-        e.Graphics.DrawImage(_preparedBitmap, 0, 0, _preparedBitmap.Width, _preparedBitmap.Height);
+        graphics.DrawImage(bitmap, 0, 0, bitmap.Width, bitmap.Height);
     }
 
     private static Font CreateFontForElement(LabelElement element, float em)
     {
         var style = element.IsBold ? FontStyle.Bold : FontStyle.Regular;
-        if (string.Equals(element.Name, "安装位置大字", StringComparison.Ordinal))
-        {
-            return new Font("Microsoft YaHei", em, style);
-        }
+        var fontName = ResolveFontFamilyName(element.FontFamily);
+        return TryCreateFont(fontName, em, style)
+            ?? TryCreateFont(fontName, em, FontStyle.Regular)
+            ?? TryCreateFont(DefaultFontFamily, em, style)
+            ?? new Font(System.Drawing.FontFamily.GenericSansSerif, em, FontStyle.Regular, GraphicsUnit.Point);
+    }
 
-        return new Font("Microsoft YaHei UI", em, style);
+    private static Font? TryCreateFont(string fontFamily, float em, FontStyle style)
+    {
+        try
+        {
+            return new Font(fontFamily, em, style, GraphicsUnit.Point);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private static string ResolveFontFamilyName(string? fontFamily)
+    {
+        var normalized = fontFamily?.Trim();
+        return !string.IsNullOrWhiteSpace(normalized) && InstalledFontNames.Contains(normalized)
+            ? normalized
+            : DefaultFontFamily;
     }
 
     private static StringFormat CreateStringFormatForElement(LabelElement element)
     {
-        if (string.Equals(element.Name, "安装位置大字", StringComparison.Ordinal))
+        var format = new StringFormat(StringFormat.GenericDefault)
         {
-            return new StringFormat(StringFormat.GenericTypographic)
+            Trimming = StringTrimming.None,
+            Alignment = element.HorizontalAlignment?.Trim().ToLowerInvariant() switch
             {
-                Alignment = StringAlignment.Center,
-                LineAlignment = StringAlignment.Center,
-                FormatFlags = StringFormatFlags.NoWrap
-            };
-        }
-
-        if (string.Equals(element.Name, "产品", StringComparison.Ordinal))
-        {
-            return new StringFormat(StringFormat.GenericTypographic)
-            {
-                Alignment = StringAlignment.Near,
-                LineAlignment = StringAlignment.Near,
-                FormatFlags = StringFormatFlags.NoWrap
-            };
-        }
-
-        if (string.Equals(element.Name, "日期顺序版本班次", StringComparison.Ordinal)
-            || element.Name.StartsWith("T1K", StringComparison.Ordinal))
-        {
-            return new StringFormat(StringFormat.GenericTypographic)
-            {
-                Alignment = StringAlignment.Near,
-                LineAlignment = StringAlignment.Near,
-                FormatFlags = StringFormatFlags.NoWrap
-            };
-        }
-
-        return new StringFormat(StringFormat.GenericDefault);
+                "center" => StringAlignment.Center,
+                "right" => StringAlignment.Far,
+                _ => StringAlignment.Near
+            }
+        };
+        format.FormatFlags |= StringFormatFlags.NoWrap | StringFormatFlags.MeasureTrailingSpaces;
+        return format;
     }
 
     private static float CalculateFittingFontSize(
@@ -489,13 +585,17 @@ public class LabelPrinterHelper
 
         const float minEm = 4.0f;
         const float step = 0.35f;
+        var isSingleLine = !text.Contains('\n') && !text.Contains('\r');
 
         var current = initialEm;
         while (current > minEm)
         {
             using var testFont = CreateFontForElement(element, current);
             var measured = graphics.MeasureString(text, testFont, new SizeF(width, height), format);
-            if (measured.Width <= width + 0.5f && measured.Height <= height + 0.5f)
+            if (isSingleLine && measured.Height <= height + 0.5f)
+                return current;
+
+            if (!isSingleLine && measured.Width <= width + 0.5f && measured.Height <= height + 0.5f)
                 return current;
 
             current -= step;
@@ -503,4 +603,14 @@ public class LabelPrinterHelper
 
         return minEm;
     }
+
+    private sealed record BatchPrintContext(
+        IReadOnlyList<LabelElement> Elements,
+        string Title,
+        string PartNumber,
+        string BackupField1,
+        string BackupField2,
+        IReadOnlyList<string> SequenceCodes,
+        DateTime ProductionDate,
+        string OperatorName);
 }

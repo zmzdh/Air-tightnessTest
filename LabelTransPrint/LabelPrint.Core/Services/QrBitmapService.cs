@@ -1,23 +1,32 @@
 using System.Drawing;
 using ZXing;
 using ZXing.Common;
+using ZXing.QrCode;
+using ZXing.QrCode.Internal;
 
 namespace LabelTransPrint.Services;
 
 public static class QrBitmapService
 {
-    public static Bitmap? GenerateQRCode(string content, int size)
+    public static Bitmap? GenerateQRCode(string content, int size, string? errorCorrection = null, int? margin = null)
     {
         try
         {
             var writer = new BarcodeWriterPixelData
             {
                 Format = BarcodeFormat.QR_CODE,
-                Options = new EncodingOptions
+                Options = new QrCodeEncodingOptions
                 {
                     Width = size,
                     Height = size,
-                    Margin = 1
+                    Margin = Math.Max(0, margin ?? 1),
+                    ErrorCorrection = errorCorrection?.Trim().ToUpperInvariant() switch
+                    {
+                        "M" => ErrorCorrectionLevel.M,
+                        "Q" => ErrorCorrectionLevel.Q,
+                        "H" => ErrorCorrectionLevel.H,
+                        _ => ErrorCorrectionLevel.L
+                    }
                 }
             };
             var pixelData = writer.Write(content);

@@ -4,7 +4,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <SharedLabelPrintRoot Condition="'$(SharedLabelPrintRoot)' == ''">$(MSBuildThisFileDirectory)..\..\LabelTransPrint</SharedLabelPrintRoot>
+    <SharedLabelPrintRoot Condition="'$(SharedLabelPrintRoot)' == ''">$(MSBuildThisFileDirectory)..\LabelTransPrint</SharedLabelPrintRoot>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <RootNamespace>LumbarMassageTest</RootNamespace>
@@ -14,9 +14,9 @@
     <AssemblyDescription>&#x7528;&#x4E8E;&#x6C14;&#x5BC6;&#x6027;&#x6D4B;&#x8BD5;&#x7684;&#x81EA;&#x52A8;&#x5316;&#x68C0;&#x6D4B;&#x7CFB;&#x7EDF;</AssemblyDescription>
     <AssemblyCompany>CSAS</AssemblyCompany>
     <AssemblyCopyright>Copyright &#x00A9; 2026</AssemblyCopyright>
-    <Version>1.0.2</Version>
-    <AssemblyVersion>1.0.2.0</AssemblyVersion>
-    <FileVersion>1.0.2.0</FileVersion>
+    <Version>1.0.3</Version>
+    <AssemblyVersion>1.0.3.0</AssemblyVersion>
+    <FileVersion>1.0.3.0</FileVersion>
     <PlatformTarget>x64</PlatformTarget>
     <Platforms>AnyCPU;x64</Platforms>
     <ApplicationIcon>CSAS_icon.ico</ApplicationIcon>

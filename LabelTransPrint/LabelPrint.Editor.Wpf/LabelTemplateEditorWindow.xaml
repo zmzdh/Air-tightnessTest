@@ -21,11 +21,14 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="6" />
-            <RowDefinition Height="250" MinHeight="190" />
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MinWidth="250" />
+            <ColumnDefinition Width="6" />
+            <ColumnDefinition Width="520" MinWidth="400" />
+        </Grid.ColumnDefinitions>
 
-        <Border Grid.Row="0"
+        <Border Grid.Row="0" Grid.ColumnSpan="3"
                 Background="#FFF8FAFC"
                 BorderBrush="#FFE2E8F0"
                 BorderThickness="1"
@@ -41,25 +44,31 @@
                 </StackPanel>
 
                 <WrapPanel VerticalAlignment="Center">
-                    <TextBlock Text="模板编码" VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <TextBox x:Name="TemplateCodeTextBox" Width="140" Height="28" Margin="0,0,12,0" VerticalContentAlignment="Center" />
-                    <TextBlock Text="纸张(mm)" VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <TextBox x:Name="PaperWidthTextBox" Width="56" Height="28" Margin="0,0,4,0" VerticalContentAlignment="Center" />
-                    <TextBlock Text="x" VerticalAlignment="Center" Margin="0,0,4,0" />
-                    <TextBox x:Name="PaperHeightTextBox" Width="56" Height="28" Margin="0,0,16,0" VerticalContentAlignment="Center" />
+                    <TextBlock Text="模板编码" VerticalAlignment="Center" Margin="0,0,6,6" />
+                    <TextBox x:Name="TemplateCodeTextBox" Width="140" Height="28" Margin="0,0,12,6" VerticalContentAlignment="Center" />
+                    <TextBlock Text="纸张(mm)" VerticalAlignment="Center" Margin="0,0,6,6" />
+                    <TextBox x:Name="PaperWidthTextBox" Width="56" Height="28" Margin="0,0,4,6" VerticalContentAlignment="Center" />
+                    <TextBlock Text="x" VerticalAlignment="Center" Margin="0,0,4,6" />
+                    <TextBox x:Name="PaperHeightTextBox" Width="56" Height="28" Margin="0,0,16,6" VerticalContentAlignment="Center" />
 
-                    <Button Content="文本" Width="58" Height="28" Margin="0,0,6,0" Background="#FF2563EB" Style="{StaticResource ToolbarButtonStyle}" Click="AddTextButton_Click" />
-                    <Button Content="二维码" Width="68" Height="28" Margin="0,0,6,0" Background="#FF0F766E" Style="{StaticResource ToolbarButtonStyle}" Click="AddQrButton_Click" />
-                    <Button Content="条形码" Width="68" Height="28" Margin="0,0,6,0" Background="#FF7C3AED" Style="{StaticResource ToolbarButtonStyle}" Click="AddBarcodeButton_Click" />
-                    <Button Content="图片" Width="58" Height="28" Margin="0,0,6,0" Background="#FFCA8A04" Style="{StaticResource ToolbarButtonStyle}" Click="AddImageButton_Click" />
-                    <Button Content="线条" Width="58" Height="28" Margin="0,0,6,0" Background="#FF475569" Style="{StaticResource ToolbarButtonStyle}" Click="AddLineButton_Click" />
-                    <Button Content="表格" Width="58" Height="28" Margin="0,0,12,0" Background="#FF0891B2" Style="{StaticResource ToolbarButtonStyle}" Click="AddTableButton_Click" />
-                    <Button Content="删除选中" Width="86" Height="28" Background="#FFDC2626" Style="{StaticResource ToolbarButtonStyle}" Click="DeleteButton_Click" />
+                    <Button Content="文本" Width="58" Height="28" Margin="0,0,6,6" Background="#FF2563EB" Style="{StaticResource ToolbarButtonStyle}" Click="AddTextButton_Click" />
+                    <Button Content="二维码" Width="68" Height="28" Margin="0,0,6,6" Background="#FF0F766E" Style="{StaticResource ToolbarButtonStyle}" Click="AddQrButton_Click" />
+                    <Button Content="条形码" Width="68" Height="28" Margin="0,0,6,6" Background="#FF7C3AED" Style="{StaticResource ToolbarButtonStyle}" Click="AddBarcodeButton_Click" />
+                    <Button Content="图片" Width="58" Height="28" Margin="0,0,6,6" Background="#FFCA8A04" Style="{StaticResource ToolbarButtonStyle}" Click="AddImageButton_Click" />
+                    <Button Content="线条" Width="58" Height="28" Margin="0,0,6,6" Background="#FF475569" Style="{StaticResource ToolbarButtonStyle}" Click="AddLineButton_Click" />
+                    <Button Content="表格" Width="58" Height="28" Margin="0,0,12,6" Background="#FF0891B2" Style="{StaticResource ToolbarButtonStyle}" Click="AddTableButton_Click" />
+
+                    <Button Content="撤销" Width="58" Height="28" Margin="0,0,6,6" Background="#FF64748B" Style="{StaticResource ToolbarButtonStyle}" Click="UndoButton_Click" />
+                    <Button Content="重做" Width="58" Height="28" Margin="0,0,12,6" Background="#FF64748B" Style="{StaticResource ToolbarButtonStyle}" Click="RedoButton_Click" />
+                    <Button Content="剪切" Width="58" Height="28" Margin="0,0,6,6" Background="#FFEA580C" Style="{StaticResource ToolbarButtonStyle}" Click="CutButton_Click" />
+                    <Button Content="复制" Width="58" Height="28" Margin="0,0,6,6" Background="#FF0F766E" Style="{StaticResource ToolbarButtonStyle}" Click="CopyButton_Click" />
+                    <Button Content="粘贴" Width="58" Height="28" Margin="0,0,12,6" Background="#FF16A34A" Style="{StaticResource ToolbarButtonStyle}" Click="PasteButton_Click" />
+                    <Button Content="删除选中" Width="86" Height="28" Margin="0,0,0,6" Background="#FFDC2626" Style="{StaticResource ToolbarButtonStyle}" Click="DeleteButton_Click" />
                 </WrapPanel>
             </DockPanel>
         </Border>
 
-        <Border Grid.Row="1"
+        <Border Grid.Row="1" Grid.Column="0"
                 Background="#FFE7EBF0"
                 BorderBrush="#FFCBD5E1"
                 BorderThickness="1">
@@ -69,32 +78,36 @@
                 <Grid Margin="24">
                     <Canvas x:Name="DesignCanvas"
                             Background="White"
+                            Focusable="True"
                             MouseLeftButtonDown="DesignCanvas_MouseLeftButtonDown" />
                 </Grid>
             </ScrollViewer>
         </Border>
 
-        <GridSplitter Grid.Row="2"
-                      Height="6"
-                      HorizontalAlignment="Stretch"
-                      VerticalAlignment="Center"
+        <GridSplitter Grid.Row="1" Grid.Column="1"
+                      Width="6"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Stretch"
                       Background="#FFE2E8F0"
-                      ResizeDirection="Rows" />
+                      ResizeDirection="Columns" />
 
-        <Border Grid.Row="3"
+        <Border Grid.Row="1" Grid.Column="2"
                 Background="#FFF8FAFC"
                 BorderBrush="#FFE2E8F0"
                 BorderThickness="1"
                 Padding="8"
-                Margin="0,8,0,0">
+                Margin="8,0,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="220" MinWidth="170" />
+                    <ColumnDefinition Width="150" MinWidth="110" />
                     <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="*" MinWidth="260" />
-                    <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="430" MinWidth="360" />
+                    <ColumnDefinition Width="*" MinWidth="200" />
                 </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" MinHeight="140" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
                 <GroupBox Header="元素列表">
                     <ListBox x:Name="ItemsListBox"
@@ -163,13 +176,13 @@
                     </Grid>
                 </GroupBox>
 
-                <GridSplitter Grid.Column="3"
-                              Width="8"
+                <GridSplitter Grid.Row="1" Grid.ColumnSpan="3"
+                              Height="8"
                               HorizontalAlignment="Stretch"
                               Background="Transparent"
-                              ResizeDirection="Columns" />
+                              ResizeDirection="Rows" />
 
-                <GroupBox Grid.Column="4" Header="位置/尺寸/样式">
+                <GroupBox Grid.Row="2" Grid.ColumnSpan="3" Header="位置/尺寸/样式（方向键微调 0.1 mm）" MaxHeight="360">
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Auto">
                         <Grid Margin="8">
@@ -180,6 +193,7 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -211,36 +225,47 @@
                                       Checked="BoldCheckBox_Changed"
                                       Unchecked="BoldCheckBox_Changed" />
 
-                            <TextBlock Text="线宽" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,6" />
-                            <TextBox x:Name="LineThicknessTextBox" Grid.Row="3" Grid.Column="1" Margin="0,0,10,6" TextChanged="PropertyTextBox_TextChanged" />
-                            <TextBlock Text="线型" Grid.Row="3" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,6,6" />
-                            <ComboBox x:Name="LineStyleComboBox" Grid.Row="3" Grid.Column="3" Margin="0,0,0,6" SelectionChanged="LineStyleComboBox_SelectionChanged">
+                            <TextBlock Text="字体" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,6" />
+                            <ComboBox x:Name="FontFamilyComboBox"
+                                      Grid.Row="3"
+                                      Grid.Column="1"
+                                      Grid.ColumnSpan="3"
+                                      Margin="0,0,0,6"
+                                      DisplayMemberPath="DisplayName"
+                                      SelectedValuePath="SourceName"
+                                      SelectionChanged="FontFamilyComboBox_SelectionChanged" />
+
+                            <TextBlock Text="线宽" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,6" />
+                            <TextBox x:Name="LineThicknessTextBox" Grid.Row="4" Grid.Column="1" Margin="0,0,10,6" TextChanged="PropertyTextBox_TextChanged" />
+                            <TextBlock Text="线型" Grid.Row="4" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,6,6" />
+                            <ComboBox x:Name="LineStyleComboBox" Grid.Row="4" Grid.Column="3" Margin="0,0,0,6" SelectionChanged="LineStyleComboBox_SelectionChanged">
                                 <ComboBoxItem Content="Solid" />
                                 <ComboBoxItem Content="Dash" />
                                 <ComboBoxItem Content="Dot" />
                                 <ComboBoxItem Content="DashDot" />
                             </ComboBox>
 
-                            <TextBlock Text="行数" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,6" />
-                            <TextBox x:Name="RowCountTextBox" Grid.Row="4" Grid.Column="1" Margin="0,0,10,6" TextChanged="TableShapeTextBox_TextChanged" />
-                            <TextBlock Text="列数" Grid.Row="4" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,6,6" />
-                            <TextBox x:Name="ColumnCountTextBox" Grid.Row="4" Grid.Column="3" Margin="0,0,0,6" TextChanged="TableShapeTextBox_TextChanged" />
+                            <TextBlock Text="行数" Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,6" />
+                            <TextBox x:Name="RowCountTextBox" Grid.Row="5" Grid.Column="1" Margin="0,0,10,6" TextChanged="TableShapeTextBox_TextChanged" />
+                            <TextBlock Text="列数" Grid.Row="5" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,6,6" />
+                            <TextBox x:Name="ColumnCountTextBox" Grid.Row="5" Grid.Column="3" Margin="0,0,0,6" TextChanged="TableShapeTextBox_TextChanged" />
 
-                            <TextBlock Text="竖线X" Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,6" />
-                            <TextBox x:Name="TableColumnLineTextBox" Grid.Row="5" Grid.Column="1" Margin="0,0,10,6" />
-                            <TextBlock Text="横线Y" Grid.Row="5" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,6,6" />
-                            <TextBox x:Name="TableRowLineTextBox" Grid.Row="5" Grid.Column="3" Margin="0,0,0,6" />
+                            <TextBlock Text="竖线X" Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,6" />
+                            <TextBox x:Name="TableColumnLineTextBox" Grid.Row="6" Grid.Column="1" Margin="0,0,10,6" />
+                            <TextBlock Text="横线Y" Grid.Row="6" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,6,6" />
+                            <TextBox x:Name="TableRowLineTextBox" Grid.Row="6" Grid.Column="3" Margin="0,0,0,6" />
 
-                            <WrapPanel Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,0,0,8">
+                            <WrapPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,0,0,8">
                                 <Button x:Name="InsertColumnLineButton" Content="插入竖线" Width="78" Height="28" Margin="0,0,6,0" Background="#FF0891B2" Style="{StaticResource ToolbarButtonStyle}" Click="InsertColumnLineButton_Click" />
                                 <Button x:Name="InsertRowLineButton" Content="插入横线" Width="78" Height="28" Margin="0,0,6,0" Background="#FF0891B2" Style="{StaticResource ToolbarButtonStyle}" Click="InsertRowLineButton_Click" />
-                                <Button x:Name="DeleteTableLineButton" Content="删除选中段" Width="94" Height="28" Background="#FFDC2626" Style="{StaticResource ToolbarButtonStyle}" Click="DeleteTableLineButton_Click" />
+                                <Button x:Name="DeleteTableLineButton" Content="删除选中段" Width="94" Height="28" Margin="0,0,6,0" Background="#FFDC2626" Style="{StaticResource ToolbarButtonStyle}" Click="DeleteTableLineButton_Click" />
+                                <Button x:Name="DeleteWholeTableLineButton" Content="删除整条线" Width="94" Height="28" Background="#FFB91C1C" Style="{StaticResource ToolbarButtonStyle}" Click="DeleteWholeTableLineButton_Click" />
                             </WrapPanel>
 
-                            <TextBlock Grid.Row="7"
+                            <TextBlock Grid.Row="8"
                                        Grid.Column="0"
                                        Grid.ColumnSpan="4"
-                                       Text="表格内点击内部线段可选中，拖动可调整整条线位置；删除只删除选中的这一段。"
+                                       Text="表格内点击内部线段可选中，拖动可调整整条线位置；可删除选中段，也可删除该横线或竖线整条线。"
                                        Foreground="#FF64748B"
                                        FontSize="12"
                                        TextWrapping="Wrap" />
