@@ -11,25 +11,65 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决�
 		LabelTransPrint\LabelPrint.Editor.Wpf\LabelPrint.Editor.Wpf.csproj = LabelTransPrint\LabelPrint.Editor.Wpf\LabelPrint.Editor.Wpf.csproj
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "LabelTransPrint", "LabelTransPrint", "{B580765E-6A2D-934B-31B8-70E43FC0CD0D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LabelPrint.Core", "LabelTransPrint\LabelPrint.Core\LabelPrint.Core.csproj", "{27AA24B5-F93D-4022-BE51-143FE20EF764}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LabelPrint.Editor.Wpf", "LabelTransPrint\LabelPrint.Editor.Wpf\LabelPrint.Editor.Wpf.csproj", "{1162DF09-2323-4DA5-951D-CBD767ECA650}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
 		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{2171E099-F807-E358-EC67-8084E210DE9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2171E099-F807-E358-EC67-8084E210DE9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2171E099-F807-E358-EC67-8084E210DE9A}.Debug|x64.ActiveCfg = Debug|x64
 		{2171E099-F807-E358-EC67-8084E210DE9A}.Debug|x64.Build.0 = Debug|x64
+		{2171E099-F807-E358-EC67-8084E210DE9A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2171E099-F807-E358-EC67-8084E210DE9A}.Debug|x86.Build.0 = Debug|Any CPU
 		{2171E099-F807-E358-EC67-8084E210DE9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2171E099-F807-E358-EC67-8084E210DE9A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2171E099-F807-E358-EC67-8084E210DE9A}.Release|x64.ActiveCfg = Release|x64
 		{2171E099-F807-E358-EC67-8084E210DE9A}.Release|x64.Build.0 = Release|x64
+		{2171E099-F807-E358-EC67-8084E210DE9A}.Release|x86.ActiveCfg = Release|Any CPU
+		{2171E099-F807-E358-EC67-8084E210DE9A}.Release|x86.Build.0 = Release|Any CPU
+		{27AA24B5-F93D-4022-BE51-143FE20EF764}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27AA24B5-F93D-4022-BE51-143FE20EF764}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27AA24B5-F93D-4022-BE51-143FE20EF764}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{27AA24B5-F93D-4022-BE51-143FE20EF764}.Debug|x64.Build.0 = Debug|Any CPU
+		{27AA24B5-F93D-4022-BE51-143FE20EF764}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{27AA24B5-F93D-4022-BE51-143FE20EF764}.Debug|x86.Build.0 = Debug|Any CPU
+		{27AA24B5-F93D-4022-BE51-143FE20EF764}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27AA24B5-F93D-4022-BE51-143FE20EF764}.Release|Any CPU.Build.0 = Release|Any CPU
+		{27AA24B5-F93D-4022-BE51-143FE20EF764}.Release|x64.ActiveCfg = Release|Any CPU
+		{27AA24B5-F93D-4022-BE51-143FE20EF764}.Release|x64.Build.0 = Release|Any CPU
+		{27AA24B5-F93D-4022-BE51-143FE20EF764}.Release|x86.ActiveCfg = Release|Any CPU
+		{27AA24B5-F93D-4022-BE51-143FE20EF764}.Release|x86.Build.0 = Release|Any CPU
+		{1162DF09-2323-4DA5-951D-CBD767ECA650}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1162DF09-2323-4DA5-951D-CBD767ECA650}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1162DF09-2323-4DA5-951D-CBD767ECA650}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1162DF09-2323-4DA5-951D-CBD767ECA650}.Debug|x64.Build.0 = Debug|Any CPU
+		{1162DF09-2323-4DA5-951D-CBD767ECA650}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1162DF09-2323-4DA5-951D-CBD767ECA650}.Debug|x86.Build.0 = Debug|Any CPU
+		{1162DF09-2323-4DA5-951D-CBD767ECA650}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1162DF09-2323-4DA5-951D-CBD767ECA650}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1162DF09-2323-4DA5-951D-CBD767ECA650}.Release|x64.ActiveCfg = Release|Any CPU
+		{1162DF09-2323-4DA5-951D-CBD767ECA650}.Release|x64.Build.0 = Release|Any CPU
+		{1162DF09-2323-4DA5-951D-CBD767ECA650}.Release|x86.ActiveCfg = Release|Any CPU
+		{1162DF09-2323-4DA5-951D-CBD767ECA650}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{27AA24B5-F93D-4022-BE51-143FE20EF764} = {B580765E-6A2D-934B-31B8-70E43FC0CD0D}
+		{1162DF09-2323-4DA5-951D-CBD767ECA650} = {B580765E-6A2D-934B-31B8-70E43FC0CD0D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4833A29B-1D6E-4E29-830D-580DFA2D3CB4}
