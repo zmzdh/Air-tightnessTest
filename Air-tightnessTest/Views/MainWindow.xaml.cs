@@ -78,7 +78,7 @@ namespace LumbarMassageTest
             _dbService = new DatabaseService(_logService);
             _configService = new ConfigService(_logService);
             _testService = new TestService(_plcService, _logService);
-            _labelPrintService = new LabelPrintService(_configService, _logService);
+            _labelPrintService = new LabelPrintService(_configService, _dbService, _logService);
             _mesService = new MesService(_logService);
             _modbusService = new ModbusServerService(_logService);
             _licenseService = new LicenseService(_logService);
@@ -90,7 +90,6 @@ namespace LumbarMassageTest
             _testService.OnTestStageChanged += TestService_OnStageChanged;
             _testService.OnTestCompleted += TestService_OnTestCompleted;
             _testService.OnTestCompleted += TestService_OnTestCompletedSaveRecord;
-            _testService.OnTestCompleted += TestService_OnTestCompletedPrintLabel;
 
             foreach (var channel in new[] { 1, 2, 3, 4 })
             {
@@ -158,6 +157,22 @@ namespace LumbarMassageTest
                 return;
             }
 
+            string printMessage = string.Empty;
+            try
+            {
+                var printResult = await _labelPrintService.PrintIfEnabledAsync(record).ConfigureAwait(false);
+                if (printResult.PrintJobSent)
+                {
+                    printMessage = $"；{printResult.Message}";
+                    await Dispatcher.InvokeAsync(() => _ = _testControl?.RefreshPrintSettingsFromRuntimeAsync());
+                }
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError("合格标签打印失败", ex);
+                printMessage = $"；标签打印失败: {ex.Message}";
+            }
+
             bool isModbusMode = IsModbusMode();
             bool modbusUpdated = true;
 
@@ -189,14 +204,14 @@ namespace LumbarMassageTest
                         if (isModbusMode)
                         {
                             TxtStatus.Text = modbusUpdated
-                                ? "测试记录已保存并更新 Modbus 数据"
-                                : "测试记录已保存，但更新 Modbus 数据失败";
+                                ? $"测试记录已保存并更新 Modbus 数据{printMessage}"
+                                : $"测试记录已保存，但更新 Modbus 数据失败{printMessage}";
                         }
                         else
                         {
                             TxtStatus.Text = sent
-                                ? "测试记录已保存并推送MES成功"
-                                : "测试记录已保存，但推送MES失败";
+                                ? $"测试记录已保存并推送MES成功{printMessage}"
+                                : $"测试记录已保存，但推送MES失败{printMessage}";
                         }
                     });
                 }
@@ -207,23 +222,6 @@ namespace LumbarMassageTest
                 {
                     TxtStatus.Text = $"保存测试记录异常: {ex.Message}";
                 });
-            }
-        }
-
-        private async void TestService_OnTestCompletedPrintLabel(object? sender, TestRecord record)
-        {
-            try
-            {
-                var result = await _labelPrintService.PrintIfEnabledAsync(record).ConfigureAwait(false);
-                if (result.PrintJobSent)
-                {
-                    await Dispatcher.InvokeAsync(() => TxtStatus.Text = result.Message);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logService.LogError("合格标签打印失败", ex);
-                await Dispatcher.InvokeAsync(() => TxtStatus.Text = $"标签打印失败: {ex.Message}");
             }
         }
 
@@ -1544,7 +1542,6 @@ namespace LumbarMassageTest
                 _testService.OnTestStageChanged -= TestService_OnStageChanged;
                 _testService.OnTestCompleted -= TestService_OnTestCompleted;
                 _testService.OnTestCompleted -= TestService_OnTestCompletedSaveRecord;
-                _testService.OnTestCompleted -= TestService_OnTestCompletedPrintLabel;
             }
 
             // 清理资源

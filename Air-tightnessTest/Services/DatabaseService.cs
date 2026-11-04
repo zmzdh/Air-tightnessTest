@@ -122,6 +122,8 @@ namespace LumbarMassageTest.Services
                         WorkOrder TEXT,
                         ProductModel TEXT NOT NULL,
                         ProductCode TEXT NOT NULL,
+                        PrintSerialNumber TEXT DEFAULT '',
+                        ShiftCode TEXT DEFAULT '',
                         Operator TEXT NOT NULL,
                         Channel INTEGER NOT NULL,
                         TestCount INTEGER NOT NULL,
@@ -133,6 +135,18 @@ namespace LumbarMassageTest.Services
                         Result INTEGER NOT NULL,
                         FailReason TEXT,
                         TestDuration TEXT
+                    )";
+
+                string createPrintSerialReservationTable = @"
+                    CREATE TABLE IF NOT EXISTS PrintSerialReservations (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        PrintDate TEXT NOT NULL,
+                        ProductModel TEXT NOT NULL,
+                        PartNumber TEXT NOT NULL,
+                        SequenceNumber INTEGER NOT NULL,
+                        PrintSerialNumber TEXT NOT NULL UNIQUE,
+                        ReservedAt TEXT NOT NULL,
+                        UNIQUE(PrintDate, ProductModel, PartNumber, SequenceNumber)
                     )";
 
                 // 创建用户表
@@ -175,11 +189,13 @@ namespace LumbarMassageTest.Services
                 using var cmd2 = new SqliteCommand(createUserTable, connection);
                 using var cmd3 = new SqliteCommand(createLoginHistoryTable, connection);
                 using var cmd4 = new SqliteCommand(createMessageConfigTable, connection);
+                using var cmd5 = new SqliteCommand(createPrintSerialReservationTable, connection);
 
                 cmd1.ExecuteNonQuery();
                 cmd2.ExecuteNonQuery();
                 cmd3.ExecuteNonQuery();
                 cmd4.ExecuteNonQuery();
+                cmd5.ExecuteNonQuery();
 
                 // 确保数据库结构包含最新字段
                 EnsureTestRecordsSchema(connection);
@@ -259,6 +275,8 @@ namespace LumbarMassageTest.Services
                 AddColumnIfMissing("MassageCurrents", "TEXT DEFAULT ''");
                 AddColumnIfMissing("AirLeakResults", "TEXT DEFAULT ''");
                 AddColumnIfMissing("TestDuration", "REAL DEFAULT 0");
+                AddColumnIfMissing("PrintSerialNumber", "TEXT DEFAULT ''");
+                AddColumnIfMissing("ShiftCode", "TEXT DEFAULT ''");
             }
             catch (Exception ex)
             {
@@ -314,10 +332,10 @@ namespace LumbarMassageTest.Services
 
                 string sql = @"
                     INSERT INTO TestRecords
-                    (TestTime, WorkOrder, ProductModel, ProductCode, Operator, Channel, TestCount,
+                    (TestTime, WorkOrder, ProductModel, ProductCode, PrintSerialNumber, ShiftCode, Operator, Channel, TestCount,
                      TestVoltage, StaticCurrent, LumbarCurrents, MassageCurrents, AirLeakResults, Result, FailReason, TestDuration)
                     VALUES
-                    (@TestTime, @WorkOrder, @ProductModel, @ProductCode, @Operator, @Channel, @TestCount,
+                    (@TestTime, @WorkOrder, @ProductModel, @ProductCode, @PrintSerialNumber, @ShiftCode, @Operator, @Channel, @TestCount,
                      @TestVoltage, @StaticCurrent, @LumbarCurrents, @MassageCurrents, @AirLeakResults, @Result, @FailReason, @TestDuration)";
 
                 using var cmd = new SqliteCommand(sql, connection);
@@ -325,6 +343,8 @@ namespace LumbarMassageTest.Services
                 cmd.Parameters.AddWithValue("@WorkOrder", record.WorkOrder ?? string.Empty);
                 cmd.Parameters.AddWithValue("@ProductModel", record.ProductModel ?? string.Empty);
                 cmd.Parameters.AddWithValue("@ProductCode", SanitizeProductCode(record.ProductCode));
+                cmd.Parameters.AddWithValue("@PrintSerialNumber", record.PrintSerialNumber?.Trim() ?? string.Empty);
+                cmd.Parameters.AddWithValue("@ShiftCode", record.ShiftCode?.Trim() ?? string.Empty);
                 cmd.Parameters.AddWithValue("@Operator", ResolveOperator(record.Operator));
                 cmd.Parameters.AddWithValue("@Channel", record.Channel);
                 cmd.Parameters.AddWithValue("@TestCount", record.TestCount);
@@ -598,6 +618,57 @@ namespace LumbarMassageTest.Services
             return Convert.ToInt32(result ?? 0);
         }
 
+        public async Task<bool> PrintSerialNumberExistsAsync(string printSerialNumber)
+        {
+            if (string.IsNullOrWhiteSpace(printSerialNumber))
+            {
+                return false;
+            }
+
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
+            const string sql = @"
+                SELECT EXISTS(SELECT 1 FROM TestRecords WHERE PrintSerialNumber = @PrintSerialNumber)
+                    OR EXISTS(SELECT 1 FROM PrintSerialReservations WHERE PrintSerialNumber = @PrintSerialNumber);";
+            using var command = new SqliteCommand(sql, connection);
+            command.Parameters.AddWithValue("@PrintSerialNumber", printSerialNumber.Trim());
+            return Convert.ToInt32(await command.ExecuteScalarAsync() ?? 0) != 0;
+        }
+
+        public async Task<bool> TryReservePrintSerialAsync(
+            DateTime printDate,
+            string productModel,
+            string partNumber,
+            int sequenceNumber,
+            string printSerialNumber)
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
+
+            const string sql = @"
+                INSERT INTO PrintSerialReservations
+                    (PrintDate, ProductModel, PartNumber, SequenceNumber, PrintSerialNumber, ReservedAt)
+                VALUES
+                    (@PrintDate, @ProductModel, @PartNumber, @SequenceNumber, @PrintSerialNumber, @ReservedAt);";
+
+            try
+            {
+                using var command = new SqliteCommand(sql, connection);
+                command.Parameters.AddWithValue("@PrintDate", printDate.Date.ToString("yyyy-MM-dd"));
+                command.Parameters.AddWithValue("@ProductModel", productModel?.Trim() ?? string.Empty);
+                command.Parameters.AddWithValue("@PartNumber", partNumber?.Trim() ?? string.Empty);
+                command.Parameters.AddWithValue("@SequenceNumber", Math.Max(1, sequenceNumber));
+                command.Parameters.AddWithValue("@PrintSerialNumber", printSerialNumber?.Trim() ?? string.Empty);
+                command.Parameters.AddWithValue("@ReservedAt", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                await command.ExecuteNonQueryAsync();
+                return true;
+            }
+            catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+            {
+                return false;
+            }
+        }
+
         private TestRecord MapTestRecord(SqliteDataReader reader)
         {
             var record = new TestRecord
@@ -607,6 +678,8 @@ namespace LumbarMassageTest.Services
                 WorkOrder = reader["WorkOrder"]?.ToString() ?? string.Empty,
                 ProductModel = reader["ProductModel"]?.ToString() ?? string.Empty,
                 ProductCode = reader["ProductCode"]?.ToString() ?? string.Empty,
+                PrintSerialNumber = TryGetString(reader, "PrintSerialNumber"),
+                ShiftCode = TryGetString(reader, "ShiftCode"),
                 Operator = reader["Operator"]?.ToString() ?? string.Empty,
                 Channel = TryGetInt(reader, "Channel") ?? 0,
                 TestCount = TryGetInt(reader, "TestCount") ?? 0,
@@ -684,6 +757,19 @@ namespace LumbarMassageTest.Services
             }
 
             return (filtered.Average(), filtered.Max());
+        }
+
+        private static string TryGetString(SqliteDataReader reader, string column)
+        {
+            try
+            {
+                var ordinal = reader.GetOrdinal(column);
+                return reader.IsDBNull(ordinal) ? string.Empty : reader.GetString(ordinal);
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return string.Empty;
+            }
         }
 
         private static int? TryGetInt(SqliteDataReader reader, string column)

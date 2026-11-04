@@ -1056,6 +1056,13 @@ namespace LumbarMassageTest.Services
                 config.DailyFailCount = 0;
             }
 
+            config.PrintSequenceDate ??= string.Empty;
+            if (config.PrintSequenceNumber < 1)
+            {
+                config.PrintSequenceNumber = 1;
+            }
+            config.CurrentShiftCode ??= string.Empty;
+
             config.DailyChannelProductions ??= new List<ChannelDailyProduction>();
         }
 

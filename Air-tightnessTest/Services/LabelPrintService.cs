@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using LabelTransPrint.Services;
 using LumbarMassageTest.Models;
@@ -11,12 +12,15 @@ public sealed class LabelPrintService
     private const double DefaultLabelWidthMm = 40;
     private const double DefaultLabelHeightMm = 20;
     private readonly ConfigService _configService;
+    private readonly DatabaseService _databaseService;
     private readonly ILogService _logService;
     private readonly LabelTemplateService _templateService = new();
+    private readonly SemaphoreSlim _printSequenceLock = new(1, 1);
 
-    public LabelPrintService(ConfigService configService, ILogService logService)
+    public LabelPrintService(ConfigService configService, DatabaseService databaseService, ILogService logService)
     {
         _configService = configService;
+        _databaseService = databaseService;
         _logService = logService;
     }
 
@@ -48,7 +52,8 @@ public sealed class LabelPrintService
         var template = _templateService.TryLoad(settings.TemplateCode)
             ?? throw new InvalidOperationException($"打印模板不存在：{settings.TemplateCode}");
 
-        string sequenceCode = BuildSequenceCode(record, template);
+        var printContext = await AllocatePrintContextAsync(record, model, settings, template).ConfigureAwait(false);
+        string sequenceCode = printContext.SequenceCode;
         SequenceCodeValidator.ValidateTemplate(template, sequenceCode, requireSequenceCode: true);
         string originalCode = record.ProductCode ?? string.Empty;
         string fallbackPayload = string.IsNullOrWhiteSpace(originalCode)
@@ -77,7 +82,7 @@ public sealed class LabelPrintService
             settings.VehicleModelCode,
             settings.SupplierCode,
             sequenceCode,
-            settings.ShiftCode,
+            record.ShiftCode,
             record.TestTime.Date);
 
         var printer = new LabelPrinterHelper(systemConfig.PrinterName)
@@ -102,11 +107,11 @@ public sealed class LabelPrintService
             settings.VehicleModelCode,
             settings.SupplierCode,
             sequenceCode,
-            settings.ShiftCode,
+            record.ShiftCode,
             record.TestTime.Date);
 
         _logService.LogInfo($"通道{record.Channel}标签已发送打印：模板={template.TemplateCode}，打印机={systemConfig.PrinterName}");
-        return LabelPrintResult.Printed(template.TemplateCode, systemConfig.PrinterName);
+        return LabelPrintResult.Printed(template.TemplateCode, systemConfig.PrinterName, record.PrintSerialNumber);
     }
 
     private async Task<ProductModel?> FindModelAsync(string modelName)
@@ -121,20 +126,92 @@ public sealed class LabelPrintService
             string.Equals(model.ModelName, modelName, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static string BuildSequenceCode(TestRecord record, LabelTransPrint.Models.LabelTemplate template)
+    private async Task<PrintContext> AllocatePrintContextAsync(
+        TestRecord record,
+        ProductModel model,
+        LabelPrintSettings settings,
+        LabelTransPrint.Models.LabelTemplate template)
     {
-        var source = record.TestCount > 0 ? record.TestCount : 1;
-        var uses5 = LabelTemplateService.UsesField(template.Elements, LabelTemplateService.SequenceCode5Token)
+        await _printSequenceLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var runtime = await _configService.LoadRuntimeConfigAsync().ConfigureAwait(false);
+            DateTime printDate = DateTime.Today;
+            EnsurePrintSequenceState(runtime, printDate);
+            int sequence = Math.Max(1, runtime.PrintSequenceNumber);
+            int width = UsesFiveDigitSequence(template) ? 5 : 4;
+
+            while (true)
+            {
+                string serialNumber = BuildPrintSerialNumber(settings.PartNumber, printDate, sequence, width);
+                bool exists = await _databaseService.PrintSerialNumberExistsAsync(serialNumber).ConfigureAwait(false);
+                bool reserved = !exists && await _databaseService.TryReservePrintSerialAsync(
+                    printDate,
+                    model.ModelName,
+                    settings.PartNumber,
+                    sequence,
+                    serialNumber).ConfigureAwait(false);
+                if (reserved)
+                {
+                    runtime.PrintSequenceNumber = sequence + 1;
+                    if (!await _configService.SaveRuntimeConfigAsync(runtime).ConfigureAwait(false))
+                    {
+                        throw new InvalidOperationException("保存下一个打印序列号失败，已取消本次打印。");
+                    }
+
+                    record.PrintSerialNumber = serialNumber;
+                    record.ShiftCode = runtime.CurrentShiftCode?.Trim() ?? string.Empty;
+                    return new PrintContext(sequence.ToString($"D{width}"));
+                }
+
+                sequence++;
+            }
+        }
+        finally
+        {
+            _printSequenceLock.Release();
+        }
+    }
+
+    private static bool UsesFiveDigitSequence(LabelTransPrint.Models.LabelTemplate template)
+        => LabelTemplateService.UsesField(template.Elements, LabelTemplateService.SequenceCode5Token)
             || (string.Equals(template.QrPayloadMode, "Custom", StringComparison.OrdinalIgnoreCase)
                 && template.QrPayloadExpression.Contains(LabelTemplateService.SequenceCode5Token, StringComparison.OrdinalIgnoreCase));
-        return source.ToString(uses5 ? "D5" : "D4");
+
+    private static string BuildPrintSerialNumber(string? partNumber, DateTime printDate, int sequence, int width)
+    {
+        var segments = new[]
+        {
+            partNumber?.Trim() ?? string.Empty,
+            printDate.ToString("yyyyMMdd"),
+            Math.Max(1, sequence).ToString($"D{width}")
+        };
+        return string.Join("-", segments.Where(segment => !string.IsNullOrWhiteSpace(segment)));
     }
+
+    private static void EnsurePrintSequenceState(RuntimeConfig runtime, DateTime printDate)
+    {
+        string today = printDate.Date.ToString("yyyy-MM-dd");
+        if (!string.Equals(runtime.PrintSequenceDate, today, StringComparison.Ordinal))
+        {
+            runtime.PrintSequenceDate = today;
+            runtime.PrintSequenceNumber = 1;
+        }
+
+        if (runtime.PrintSequenceNumber < 1)
+        {
+            runtime.PrintSequenceNumber = 1;
+        }
+    }
+
+    private sealed record PrintContext(string SequenceCode);
+
 }
 
 public sealed record LabelPrintResult(bool PrintJobSent, string Message)
 {
     public static LabelPrintResult Skipped(string message) => new(false, message);
 
-    public static LabelPrintResult Printed(string templateCode, string printerName)
-        => new(true, $"已打印标签：{templateCode} -> {printerName}");
+    public static LabelPrintResult Printed(string templateCode, string printerName, string printSerialNumber)
+        => new(true, $"已打印标签：{templateCode} -> {printerName}，流水号：{printSerialNumber}");
 }

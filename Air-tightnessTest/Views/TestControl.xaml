@@ -68,6 +68,8 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="工单号:" Style="{StaticResource InfoLabelStyle}"/>
@@ -95,7 +97,17 @@
                     <TextBlock Grid.Row="6" Grid.Column="0" Text="不合格数:" Style="{StaticResource InfoLabelStyle}"/>
                     <TextBlock Grid.Row="6" Grid.Column="1" Name="TxtFailCount" Text="0" Style="{StaticResource InfoValueStyle}" Foreground="Red"/>
 
-                    <Border Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2" Height="12" Margin="5,6,5,0"
+                    <TextBlock Grid.Row="7" Grid.Column="0" Text="班次:" Style="{StaticResource InfoLabelStyle}"/>
+                    <TextBox Grid.Row="7" Grid.Column="1" Name="TxtShiftCode" Margin="5"
+                             LostFocus="TxtShiftCode_LostFocus" KeyDown="TxtShiftCode_KeyDown"/>
+
+                    <TextBlock Grid.Row="8" Grid.Column="0" Text="下个打印序列:" Style="{StaticResource InfoLabelStyle}"/>
+                    <TextBox Grid.Row="8" Grid.Column="1" Name="TxtPrintSequenceNumber" Margin="5"
+                             PreviewTextInput="TxtPrintSequenceNumber_PreviewTextInput"
+                             LostFocus="TxtPrintSequenceNumber_LostFocus"
+                             KeyDown="TxtPrintSequenceNumber_KeyDown"/>
+
+                    <Border Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" Height="12" Margin="5,6,5,0"
                             Background="White" BorderBrush="{StaticResource SurfaceBorderBrush}" BorderThickness="1"
                             CornerRadius="6">
                         <ProgressBar Name="OverallProductionProgress" Height="10" Margin="1"

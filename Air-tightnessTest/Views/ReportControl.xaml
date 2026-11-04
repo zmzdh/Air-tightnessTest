@@ -147,6 +147,8 @@
                             <DataGridTextColumn Header="工单号" Binding="{Binding WorkOrder}" Width="120"/>
                             <DataGridTextColumn Header="产品型号" Binding="{Binding ProductModel}" Width="100"/>
                             <DataGridTextColumn Header="产品代码" Binding="{Binding ProductCode}" Width="150"/>
+                            <DataGridTextColumn Header="打印流水号" Binding="{Binding PrintSerialNumber}" Width="160"/>
+                            <DataGridTextColumn Header="班次" Binding="{Binding ShiftCode}" Width="70"/>
                             <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="60"/>
                             <DataGridTextColumn Header="低压压差" Binding="{Binding LowPressureDropDisplay}" Width="100"/>
                             <DataGridTextColumn Header="测试结果" Binding="{Binding Result}" Width="80">

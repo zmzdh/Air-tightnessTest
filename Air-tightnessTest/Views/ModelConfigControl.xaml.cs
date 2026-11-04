@@ -541,6 +541,15 @@ namespace LumbarMassageTest.UserControls
             CmbPrintTemplate.SelectedItem = PrintTemplateCodes.FirstOrDefault(code =>
                 string.Equals(code, printSettings.TemplateCode, StringComparison.OrdinalIgnoreCase));
             CmbPrintTemplate.Text = printSettings.TemplateCode ?? string.Empty;
+            TxtPrintProductName.Text = printSettings.ProductName ?? string.Empty;
+            TxtPrintPartNumber.Text = printSettings.PartNumber ?? string.Empty;
+            TxtPrintRevisionCode.Text = printSettings.RevisionCode ?? string.Empty;
+            TxtPrintSupplierCode.Text = printSettings.SupplierCode ?? string.Empty;
+            TxtPrintHardwareVersion.Text = printSettings.HardwareVersion ?? string.Empty;
+            TxtPrintSoftwareVersion.Text = printSettings.SoftwareVersion ?? string.Empty;
+            TxtPrintDrawingVersion.Text = printSettings.DrawingVersion ?? string.Empty;
+            TxtPrintVehicleModelCode.Text = printSettings.VehicleModelCode ?? string.Empty;
+            TxtPrintSideLabel.Text = printSettings.SideLabel ?? string.Empty;
 
             _currentModel.Channel1Config ??= new ChannelConfig { ChannelName = "通道1" };
             _currentModel.Channel2Config ??= new ChannelConfig { ChannelName = "通道2" };
@@ -913,6 +922,15 @@ namespace LumbarMassageTest.UserControls
                 {
                     throw new InvalidOperationException("启用自动打印时必须选择打印模板。");
                 }
+                printSettings.ProductName = TxtPrintProductName.Text?.Trim() ?? string.Empty;
+                printSettings.PartNumber = TxtPrintPartNumber.Text?.Trim() ?? string.Empty;
+                printSettings.RevisionCode = TxtPrintRevisionCode.Text?.Trim() ?? string.Empty;
+                printSettings.SupplierCode = TxtPrintSupplierCode.Text?.Trim() ?? string.Empty;
+                printSettings.HardwareVersion = TxtPrintHardwareVersion.Text?.Trim() ?? string.Empty;
+                printSettings.SoftwareVersion = TxtPrintSoftwareVersion.Text?.Trim() ?? string.Empty;
+                printSettings.DrawingVersion = TxtPrintDrawingVersion.Text?.Trim() ?? string.Empty;
+                printSettings.VehicleModelCode = TxtPrintVehicleModelCode.Text?.Trim() ?? string.Empty;
+                printSettings.SideLabel = TxtPrintSideLabel.Text?.Trim() ?? string.Empty;
                 _currentModel.LabelPrintSettings = printSettings;
 
                 _currentModel.Channel1Config ??= new ChannelConfig { ChannelName = "通道1" };

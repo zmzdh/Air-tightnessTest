@@ -89,14 +89,72 @@
                     </GroupBox>
 
                     <GroupBox Header="标签打印配置" Margin="0,0,0,20">
-                        <StackPanel Margin="10">
-                            <CheckBox Name="ChkEnablePrinting" Content="检测合格后自动打印标签" Margin="5"/>
-                            <StackPanel Orientation="Horizontal" Margin="5">
+                        <Grid Margin="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <CheckBox Grid.Row="0" Grid.Column="0" Name="ChkEnablePrinting" Content="检测合格后自动打印标签" Margin="5"/>
+                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="5">
                                 <TextBlock Text="打印模板:" Width="90" VerticalAlignment="Center"/>
-                                <ComboBox Name="CmbPrintTemplate" Width="260" Height="25" IsEditable="True"
+                                <ComboBox Name="CmbPrintTemplate" Width="220" Height="25" IsEditable="True"
                                           ItemsSource="{Binding PrintTemplateCodes}"/>
                             </StackPanel>
-                        </StackPanel>
+
+                            <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="5">
+                                <TextBlock Text="零件名称:" Width="90" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtPrintProductName" Width="220" Height="25"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="5">
+                                <TextBlock Text="零件号:" Width="90" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtPrintPartNumber" Width="220" Height="25"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="5">
+                                <TextBlock Text="零件版本:" Width="90" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtPrintRevisionCode" Width="220" Height="25"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="5">
+                                <TextBlock Text="供应商码:" Width="90" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtPrintSupplierCode" Width="220" Height="25"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal" Margin="5">
+                                <TextBlock Text="硬件版本:" Width="90" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtPrintHardwareVersion" Width="220" Height="25"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="5">
+                                <TextBlock Text="软件版本:" Width="90" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtPrintSoftwareVersion" Width="220" Height="25"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="4" Grid.Column="0" Orientation="Horizontal" Margin="5">
+                                <TextBlock Text="图纸版本:" Width="90" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtPrintDrawingVersion" Width="220" Height="25"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="5">
+                                <TextBlock Text="车型代码:" Width="90" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtPrintVehicleModelCode" Width="220" Height="25"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="5" Grid.Column="0" Orientation="Horizontal" Margin="5">
+                                <TextBlock Text="安装位置:" Width="90" VerticalAlignment="Center"/>
+                                <TextBox Name="TxtPrintSideLabel" Width="220" Height="25"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Margin="5">
+                                <TextBlock Text="班次:" Width="90" VerticalAlignment="Center"/>
+                                <TextBlock Text="请在测试界面设置" VerticalAlignment="Center" Foreground="#FF6B7280"/>
+                            </StackPanel>
+                        </Grid>
                     </GroupBox>
 
                     <!-- 通道配置 -->

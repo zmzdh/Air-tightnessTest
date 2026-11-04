@@ -92,6 +92,9 @@ namespace LumbarMassageTest.Models
         public int DailyPassCount { get; set; }
         public int DailyFailCount { get; set; }
         public List<ChannelDailyProduction> DailyChannelProductions { get; set; } = new();
+        public string PrintSequenceDate { get; set; } = string.Empty;
+        public int PrintSequenceNumber { get; set; } = 1;
+        public string CurrentShiftCode { get; set; } = string.Empty;
     }
 
     public class ChannelDailyProduction
@@ -1638,6 +1641,8 @@ namespace LumbarMassageTest.Models
         public string WorkOrder { get; set; }
         public string ProductModel { get; set; }
         public string ProductCode { get; set; }
+        public string PrintSerialNumber { get; set; } = string.Empty;
+        public string ShiftCode { get; set; } = string.Empty;
         public string Operator { get; set; }
         public int Channel { get; set; }
         public int TestCount { get; set; }

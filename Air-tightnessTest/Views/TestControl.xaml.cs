@@ -468,6 +468,7 @@ namespace LumbarMassageTest.UserControls
             ApplyPersistedModelSelection();
             InitializeProductionState();
             ApplyTargetProductionAuthorization();
+            ApplyPrintSettingsAuthorization();
 
             UpdateMesIntegrationUI();
             ApplyChannelAvailability();
@@ -1470,6 +1471,7 @@ namespace LumbarMassageTest.UserControls
 
             _runtimeConfig.LastWorkOrder = TxtWorkOrder.Text?.Trim() ?? string.Empty;
             _runtimeConfig.LastProductModel = _selectedModel?.ModelName ?? string.Empty;
+            _runtimeConfig.CurrentShiftCode = TxtShiftCode.Text?.Trim() ?? string.Empty;
 
             await _configService.SaveRuntimeConfigAsync(_runtimeConfig);
         }
@@ -1804,8 +1806,10 @@ namespace LumbarMassageTest.UserControls
         private void InitializeProductionState()
         {
             EnsureDailyProductionState();
+            EnsurePrintSequenceState();
             LoadDailyProductionCounts();
             UpdateTargetProductionText();
+            UpdatePrintSettingsDisplay();
             UpdateOverallProductionDisplay();
             UpdateAllChannelInfoDisplays();
         }
@@ -1816,6 +1820,50 @@ namespace LumbarMassageTest.UserControls
             TxtTargetProduction.IsEnabled = isAdmin;
             TxtTargetProduction.IsReadOnly = !isAdmin;
             TxtTargetProduction.ToolTip = isAdmin ? null : "仅管理员可编辑目标产量";
+        }
+
+        private void ApplyPrintSettingsAuthorization()
+        {
+            bool isAdmin = string.Equals(_currentUser.Role, "Admin", StringComparison.OrdinalIgnoreCase);
+            TxtPrintSequenceNumber.IsReadOnly = !isAdmin;
+            TxtPrintSequenceNumber.ToolTip = isAdmin ? "管理员可设置当天的下个打印序列号。" : "仅管理员可设置打印序列号。";
+            TxtShiftCode.ToolTip = "班次作为当前运行信息，用于合格标签打印。";
+        }
+
+        private void EnsurePrintSequenceState()
+        {
+            if (_runtimeConfig == null)
+            {
+                return;
+            }
+
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
+            if (!string.Equals(_runtimeConfig.PrintSequenceDate, today, StringComparison.Ordinal))
+            {
+                _runtimeConfig.PrintSequenceDate = today;
+                _runtimeConfig.PrintSequenceNumber = 1;
+            }
+
+            if (_runtimeConfig.PrintSequenceNumber < 1)
+            {
+                _runtimeConfig.PrintSequenceNumber = 1;
+            }
+
+            _runtimeConfig.CurrentShiftCode ??= string.Empty;
+        }
+
+        private void UpdatePrintSettingsDisplay()
+        {
+            EnsurePrintSequenceState();
+            TxtShiftCode.Text = _runtimeConfig?.CurrentShiftCode ?? string.Empty;
+            TxtPrintSequenceNumber.Text = Math.Max(1, _runtimeConfig?.PrintSequenceNumber ?? 1).ToString("D4");
+        }
+
+        public async Task RefreshPrintSettingsFromRuntimeAsync()
+        {
+            _runtimeConfig = await _configService.LoadRuntimeConfigAsync();
+            EnsurePrintSequenceState();
+            UpdatePrintSettingsDisplay();
         }
 
         private void UpdateTargetProductionText()
@@ -2004,6 +2052,7 @@ namespace LumbarMassageTest.UserControls
         private void ElapsedTimer_Tick(object sender, EventArgs e)
         {
             EnsureDailyProductionState();
+            EnsurePrintSequenceState();
             foreach (var channel in _channelStartTimes.Keys.ToList())
             {
                 UpdateChannelElapsedDisplay(channel);
@@ -2068,6 +2117,70 @@ namespace LumbarMassageTest.UserControls
             _runtimeConfig ??= new RuntimeConfig();
             _runtimeConfig.TargetProduction = target;
             UpdateOverallProductionDisplay();
+            await SaveRuntimeConfigAsync();
+        }
+
+        private void TxtPrintSequenceNumber_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            e.Handled = !e.Text.All(char.IsDigit);
+        }
+
+        private async void TxtPrintSequenceNumber_LostFocus(object sender, RoutedEventArgs e)
+        {
+            await SavePrintSequenceAsync();
+        }
+
+        private async void TxtPrintSequenceNumber_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                await SavePrintSequenceAsync();
+                TxtPrintSequenceNumber.SelectAll();
+            }
+        }
+
+        private async Task SavePrintSequenceAsync()
+        {
+            if (!string.Equals(_currentUser.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                UpdatePrintSettingsDisplay();
+                return;
+            }
+
+            if (!int.TryParse(TxtPrintSequenceNumber.Text?.Trim(), out int sequence) || sequence < 1)
+            {
+                MessageBox.Show("打印序列号请输入大于 0 的整数。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                UpdatePrintSettingsDisplay();
+                return;
+            }
+
+            _runtimeConfig ??= await _configService.LoadRuntimeConfigAsync();
+            EnsurePrintSequenceState();
+            _runtimeConfig.PrintSequenceNumber = sequence;
+            _runtimeConfig.CurrentShiftCode = TxtShiftCode.Text?.Trim() ?? string.Empty;
+            await SaveRuntimeConfigAsync();
+            UpdatePrintSettingsDisplay();
+        }
+
+        private async void TxtShiftCode_LostFocus(object sender, RoutedEventArgs e)
+        {
+            await SaveShiftCodeAsync();
+        }
+
+        private async void TxtShiftCode_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                await SaveShiftCodeAsync();
+                TxtProductCode.Focus();
+            }
+        }
+
+        private async Task SaveShiftCodeAsync()
+        {
+            _runtimeConfig ??= await _configService.LoadRuntimeConfigAsync();
+            EnsurePrintSequenceState();
+            _runtimeConfig.CurrentShiftCode = TxtShiftCode.Text?.Trim() ?? string.Empty;
             await SaveRuntimeConfigAsync();
         }
 
